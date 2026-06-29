@@ -1,0 +1,135 @@
+// backend/src/middleware/authenticateAdmin.ts
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import Admin from '../models/admin/Admin.model.js';
+import User from '../models/user/User.model.js';
+import { generateAdminTokens, setAdminCookies } from '../utils/generateToken.js';
+import AppError from '../utils/AppError.js';
+import logger from '../utils/logger.js';
+
+interface AdminJWTPayload {
+  adminId: string;
+}
+
+interface RefreshJWTPayload {
+  sub: string;
+  type: string;
+}
+
+function authenticateAdmin(requiredPermission?: string) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // ── 1. Extract access token from cookie ──────────────
+      const accessToken = req.cookies?.admin_access;
+
+      if (!accessToken) {
+        // ── Fallback: check user_access for default admin ──
+        const userAccessToken = req.cookies?.user_access;
+        if (userAccessToken) {
+          try {
+            const userDecoded = jwt.verify(userAccessToken, process.env.USER_JWT_SECRET!) as { userId: string };
+            const user = await User.findById(userDecoded.userId);
+            if (user) {
+              const rawAdminEmail = (process.env.DEFAULT_ADMIN_EMAIL || '').replace(/^["']|["']$/g, '').trim().toLowerCase();
+              if (user.email.toLowerCase() === rawAdminEmail) {
+                (req as any).admin = {
+                  _id: user._id,
+                  name: user.name,
+                  email: user.email,
+                  role: 'admin',
+                  hasPermission: () => true,
+                };
+                return next();
+              }
+            }
+          } catch { /* not a valid user_access */ }
+        }
+        throw new AppError('يجب تسجيل الدخول كمشرف أولاً', 401);
+      }
+
+      // ── 2. Verify access token ──────────────────────────
+      let decoded: AdminJWTPayload;
+      try {
+        decoded = jwt.verify(accessToken, process.env.ADMIN_JWT_SECRET!) as AdminJWTPayload;
+      } catch (err) {
+        // ── 3. Expired/invalid → attempt silent refresh ─
+        const refreshToken = req.cookies?.admin_refresh;
+
+        if (!refreshToken) {
+          res.clearCookie('admin_access');
+          res.clearCookie('admin_refresh');
+          throw new AppError('انتهت جلسة المشرف، يرجى إعادة تسجيل الدخول', 401);
+        }
+
+        try {
+          const refreshDecoded = jwt.verify(
+            refreshToken,
+            process.env.ADMIN_REFRESH_SECRET!
+          ) as RefreshJWTPayload;
+
+          if (refreshDecoded.type !== 'admin_refresh') {
+            res.clearCookie('admin_access');
+            res.clearCookie('admin_refresh');
+            throw new AppError('رمز التحديث غير صالح', 401);
+          }
+
+          // Fetch admin to ensure they still exist
+          const admin = await Admin.findById(refreshDecoded.sub);
+          if (!admin) {
+            res.clearCookie('admin_access');
+            res.clearCookie('admin_refresh');
+            throw new AppError('المشرف غير موجود', 401);
+          }
+
+          // Check if password was changed after refresh token was issued
+          if (admin.passwordChangedAt) {
+            const tokenIat = (jwt.decode(refreshToken) as { iat?: number })?.iat || 0;
+            if (admin.passwordChangedAt.getTime() / 1000 > tokenIat) {
+              res.clearCookie('admin_access');
+              res.clearCookie('admin_refresh');
+              throw new AppError('تم تغيير كلمة المرور، يرجى إعادة تسجيل الدخول', 401);
+            }
+          }
+
+          // Rotate tokens
+          const newTokens = generateAdminTokens(admin._id.toString());
+          setAdminCookies(res, newTokens);
+
+          decoded = { adminId: admin._id.toString() };
+        } catch (refreshErr) {
+          res.clearCookie('admin_access');
+          res.clearCookie('admin_refresh');
+          throw new AppError('انتهت جلسة المشرف، يرجى إعادة تسجيل الدخول', 401);
+        }
+      }
+
+      // ── 4. Fetch and validate admin ─────────────────────
+      const admin = await Admin.findById(decoded.adminId).select('+password');
+      if (!admin) {
+        res.clearCookie('admin_access');
+        res.clearCookie('admin_refresh');
+        throw new AppError('المشرف غير موجود', 401);
+      }
+
+      // ── 5. Check permission (if specified) ──────────────
+      if (requiredPermission && !admin.hasPermission(requiredPermission)) {
+        throw new AppError('لا تملك الصلاحية اللازمة', 403);
+      }
+
+      // ── 6. Attach admin to request ─────────────────────
+      (req as any).admin = {
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+      };
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+export default authenticateAdmin;
