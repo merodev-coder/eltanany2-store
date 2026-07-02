@@ -1,220 +1,223 @@
-import { useState, useRef } from 'react';
-import { Upload, X, Plus, CheckCircle, AlertCircle } from 'lucide-react';
+// pages/admin/AddProductView.tsx
+import { useState } from 'react';
+import { Plus, Upload, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { addProduct } from '@/services/mockApi';
-
-const inputClass =
-  'w-full h-11 px-4 rounded-lg bg-steel-light border-0 font-body text-sm text-[#18181B] placeholder:text-slate outline-none focus:ring-2 focus:ring-ignition-start/30 transition-all';
+import { addProduct } from '@/services/api';
 
 export default function AddProductView() {
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('');
-  const [category, setCategory] = useState<'laptop' | 'accessory'>('laptop');
-  const [description, setDescription] = useState('');
-  const [images, setImages] = useState<string[]>([]);
-  const [dragActive, setDragActive] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState({
+    name: '',
+    category: 'laptop',
+    price: '',           // Original Price (سعر الشراء/الأصلي)
+    sellingPrice: '',    // Sale Price (سعر البيع)
+    stock: '0',
+    description: '',
+    images: [] as string[],
+    isFeatured: false,   // Show in Home Page
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const handleImageFiles = (files: FileList | null) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
     if (!files) return;
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
+    Array.from(files).forEach((file) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setImages(prev => [...prev, reader.result as string]);
-        }
+      reader.onloadend = () => {
+        setForm((prev) => ({ ...prev, images: [...prev.images, reader.result as string] }));
       };
       reader.readAsDataURL(file);
     });
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess(false);
-
-    if (!name.trim() || !price || !stock || !description.trim()) {
-      setError('يرجى تعبئة جميع الحقول المطلوبة');
-      return;
-    }
-
-    setSubmitting(true);
+    setLoading(true);
+    setMessage('');
     try {
       await addProduct({
-        name: name.trim(),
-        price: Number(price),
-        stock: Number(stock),
-        category,
-        description: description.trim(),
-        images,
+        name: form.name,
+        category: form.category,
+        price: Number(form.price),
+        sellingPrice: Number(form.sellingPrice) || undefined,
+        stock: Number(form.stock),
+        description: form.description,
+        images: form.images,
+        isFeatured: form.isFeatured,
       });
-      setSuccess(true);
-      setName('');
-      setPrice('');
-      setStock('');
-      setCategory('laptop');
-      setDescription('');
-      setImages([]);
-    } catch {
-      setError('فشل إضافة المنتج. حاول مرة أخرى.');
+      setMessage('✅ تم إضافة المنتج بنجاح');
+      setForm({
+        name: '',
+        category: 'laptop',
+        price: '',
+        sellingPrice: '',
+        stock: '0',
+        description: '',
+        images: [],
+        isFeatured: false,
+      });
+    } catch (err: any) {
+      setMessage(err.response?.data?.message || '❌ فشل إضافة المنتج');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white shadow-sm rounded-card p-6 sm:p-8">
-      <div className="mb-8">
-        <h2 className="font-heading font-bold text-xl text-[#18181B]">إضافة منتج</h2>
-        <p className="font-body text-sm text-slate mt-1">أضف منتجاً جديداً إلى المتجر</p>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white shadow-sm rounded-card p-6"
+    >
+      <h2 className="font-heading font-bold text-xl mb-6 flex items-center gap-2">
+        <Plus className="w-5 h-5 text-primary" />
+        إضافة منتج جديد
+      </h2>
 
-      {success && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20 text-success font-body text-sm mb-6"
-        >
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          تم إضافة المنتج بنجاح
-        </motion.div>
-      )}
-
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-error/10 border border-error/20 text-error font-body text-sm mb-6">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg text-sm font-body ${message.startsWith('✅') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+          {message}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Name */}
-          <div>
-            <label className="block font-body text-sm font-medium text-[#18181B] mb-2">اسم المنتج</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className={inputClass}
-              placeholder="مثال: ASUS ROG Strix G16"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-body text-gray-600 mb-1">الاسم <span className="text-error">*</span></label>
+          <input
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            required
+            placeholder="اسم المنتج"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
+          />
+        </div>
 
-          {/* Price */}
+        {/* Category */}
+        <div>
+          <label className="block text-sm font-body text-gray-600 mb-1">الفئة <span className="text-error">*</span></label>
+          <select
+            name="category"
+            value={form.category}
+            onChange={handleChange}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
+          >
+            <option value="laptop">لابتوب</option>
+            <option value="accessory">إكسسوار</option>
+          </select>
+        </div>
+
+        {/* Prices */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block font-body text-sm font-medium text-[#18181B] mb-2">السعر (ج.م)</label>
+            <label className="block text-sm font-body text-gray-600 mb-1">السعر الأصلي (سعر الشراء) <span className="text-error">*</span></label>
             <input
+              name="price"
               type="number"
-              min="0"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-              className={inputClass}
+              value={form.price}
+              onChange={handleChange}
+              required
+              min={0}
               placeholder="0"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
             />
+            <p className="text-xs text-slate mt-1 font-body">هذا السعر لا يظهر للعملاء — يُستخدم لحساب الأرباح</p>
           </div>
-
-          {/* Stock */}
           <div>
-            <label className="block font-body text-sm font-medium text-[#18181B] mb-2">الكمية في المخزن</label>
+            <label className="block text-sm font-body text-gray-600 mb-1">سعر البيع <span className="text-error">*</span></label>
             <input
+              name="sellingPrice"
               type="number"
-              min="0"
-              value={stock}
-              onChange={e => setStock(e.target.value)}
-              className={inputClass}
+              value={form.sellingPrice}
+              onChange={handleChange}
+              required
+              min={0}
               placeholder="0"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
             />
+            <p className="text-xs text-slate mt-1 font-body">السعر المعروض للعملاء في المتجر</p>
           </div>
+        </div>
 
-          {/* Category */}
-          <div>
-            <label className="block font-body text-sm font-medium text-[#18181B] mb-2">القسم</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as 'laptop' | 'accessory')}
-              className={inputClass}
-            >
-              <option value="laptop">لابتوب</option>
-              <option value="accessory">إكسسوارات</option>
-            </select>
-          </div>
+        {/* Stock */}
+        <div>
+          <label className="block text-sm font-body text-gray-600 mb-1">المخزون</label>
+          <input
+            name="stock"
+            type="number"
+            value={form.stock}
+            onChange={handleChange}
+            min={0}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
+          />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block font-body text-sm font-medium text-[#18181B] mb-2">الوصف</label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الوصف</label>
           <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
+            name="description"
+            value={form.description}
+            onChange={handleChange}
             rows={4}
-            className="w-full px-4 py-3 rounded-lg bg-steel-light border-0 font-body text-sm text-[#18181B] placeholder:text-slate outline-none focus:ring-2 focus:ring-ignition-start/30 resize-none"
-            placeholder="وصف تفصيلي للمنتج..."
+            placeholder="وصف المنتج..."
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body resize-none"
           />
         </div>
 
-        {/* Images */}
-        <div>
-          <label className="block font-body text-sm font-medium text-[#18181B] mb-3">صور المنتج</label>
-          <div
-            onDrop={e => {
-              e.preventDefault();
-              setDragActive(false);
-              handleImageFiles(e.dataTransfer.files);
-            }}
-            onDragOver={e => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={e => {
-              e.preventDefault();
-              setDragActive(false);
-            }}
-            onClick={() => inputRef.current?.click()}
-            className={`bg-white border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors duration-200 ${
-              dragActive ? 'border-ignition-start bg-ignition-start/5' : 'border-steel-dark/30 hover:border-ignition-start/50'
-            }`}
+        {/* Show in Home Page Toggle */}
+        <div className="flex items-center gap-3 p-3 bg-steel-light/30 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setForm((prev) => ({ ...prev, isFeatured: !prev.isFeatured }))}
+            className="flex items-center gap-2"
           >
+            {form.isFeatured ? (
+              <ToggleRight className="w-8 h-8 text-success" />
+            ) : (
+              <ToggleLeft className="w-8 h-8 text-slate" />
+            )}
+            <span className="font-body text-sm text-[#18181B]">الظهور في الصفحة الرئيسية</span>
+          </button>
+        </div>
+
+        {/* Photos */}
+        <div>
+          <label className="block text-sm font-body text-gray-600 mb-2">الصور</label>
+          <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
             <input
-              ref={inputRef}
               type="file"
               accept="image/*"
               multiple
-              onChange={e => handleImageFiles(e.target.files)}
+              onChange={handleImageUpload}
               className="hidden"
+              id="product-images"
             />
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-steel-light flex items-center justify-center">
-                <Upload className="w-5 h-5 text-[#18181B]" />
-              </div>
-              <p className="font-body text-sm text-[#18181B]">اسحب الصور هنا أو انقر للرفع</p>
-              <p className="font-body text-xs text-slate">PNG, JPG, WEBP</p>
-            </div>
+            <label htmlFor="product-images" className="cursor-pointer flex flex-col items-center gap-2">
+              <Upload className="w-8 h-8 text-gray-400" />
+              <span className="text-sm text-gray-500 font-body">اضغط لرفع الصور</span>
+            </label>
           </div>
-
-          {images.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-              {images.map((img, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-steel-light group">
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+          {form.images.length > 0 && (
+            <div className="flex gap-3 mt-4 flex-wrap">
+              {form.images.map((img, i) => (
+                <div key={i} className="relative group">
+                  <img src={img} alt="" className="w-20 h-20 object-cover rounded-lg border border-steel-light" />
                   <button
                     type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      removeImage(idx);
-                    }}
-                    className="absolute top-2 left-2 w-7 h-7 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeImage(i)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-error text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X className="w-4 h-4" />
+                    ×
                   </button>
                 </div>
               ))}
@@ -222,21 +225,16 @@ export default function AddProductView() {
           )}
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
-          disabled={submitting}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 h-12 rounded-xl gradient-brand text-white font-heading font-bold hover:shadow-glow transition-shadow disabled:opacity-50"
+          disabled={loading}
+          className="w-full md:w-auto px-8 py-3 bg-primary text-white rounded-lg font-body font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {submitting ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Plus className="w-5 h-5" />
-              إضافة المنتج
-            </>
-          )}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          إضافة المنتج
         </button>
       </form>
-    </div>
+    </motion.div>
   );
 }

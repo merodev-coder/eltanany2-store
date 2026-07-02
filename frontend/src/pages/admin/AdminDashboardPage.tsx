@@ -1,18 +1,15 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import AdminSidebar, { type AdminTab } from '@/pages/admin/AdminSidebar';
-import SalesOverviewView from '@/pages/admin/SalesOverviewView';
-import AddProductView from '@/pages/admin/AddProductView';
-import InventoryView from '@/pages/admin/InventoryView';
-import DeliveryOptionsView from '@/pages/admin/DeliveryOptionsView';
-import PriceListManagement from '@/pages/admin/PriceListManagement';
-import OrdersManagementView from '@/pages/admin/OrdersManagementView';
+import AdminSidebar from '@/pages/admin/AdminSidebar';
 
 export default function AdminDashboardPage() {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/AhmedEltanany';
+  };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]" dir="rtl">
@@ -28,7 +25,7 @@ export default function AdminDashboardPage() {
                 المتجر
               </Link>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-1.5 text-sm font-body text-white/60 hover:text-error transition-colors"
               >
                 <LogOut className="w-4 h-4" />
@@ -40,19 +37,10 @@ export default function AdminDashboardPage() {
       </header>
 
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row">
-        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <AdminSidebar />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
-          {activeTab === 'overview' && <SalesOverviewView />}
-          {activeTab === 'add-product' && <AddProductView />}
-          {activeTab === 'orders' && <OrdersManagementView />}
-          {activeTab === 'inventory' && <InventoryView />}
-          {activeTab === 'delivery' && <DeliveryOptionsView />}
-          {activeTab === 'price-list' && (
-            <div className="bg-white shadow-sm rounded-card p-6">
-              <PriceListManagement />
-            </div>
-          )}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 bg-[#FAFAFA] min-h-[calc(100vh-4rem)]">
+          <Outlet />
         </main>
       </div>
     </div>

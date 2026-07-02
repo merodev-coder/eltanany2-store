@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Truck, Store, Save, CheckCircle, Plus, Trash2, Pencil, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
-import axiosClient from '@/api/axiosClient';
+import axiosClient from '@/api/apiClient';
 import { useToast } from '@/context/ToastContext';
 
 interface ShippingCompany {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, ShoppingCart, Check, ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProductById, getRelatedProducts } from '@/services/mockApi';
+import { getProductById, getRelatedProducts } from '@/services/api';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import type { Product } from '@/types';
@@ -20,17 +20,27 @@ export default function ProductDetailsPage() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (!id) return;
+    // Guard against undefined id — wait for route params to be ready
+    if (!id || id === 'undefined') {
+      setLoading(false);
+      setProduct(null);
+      return;
+    }
     const load = async () => {
       setLoading(true);
-      const p = await getProductById(id);
-      setProduct(p || null);
-      if (p) {
-        setSelectedColor(p.colors?.[0]);
-        const r = await getRelatedProducts(id, p.category);
-        setRelated(r);
+      try {
+        const p = await getProductById(id);
+        setProduct(p || null);
+        if (p) {
+          setSelectedColor(p.colors?.[0]);
+          const r = await getRelatedProducts(id, p.category);
+          setRelated(r);
+        }
+      } catch (err) {
+        setProduct(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
     window.scrollTo({ top: 0, behavior: 'smooth' });

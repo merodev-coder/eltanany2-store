@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import ProductCard from '@/components/ui-custom/ProductCard';
-import { getAllAccessories, filterAccessories } from '@/services/mockApi';
+import { getAllAccessories, filterAccessories } from '@/services/api';
 import type { Product } from '@/types';
 
 const subcategories = [
@@ -139,7 +139,7 @@ export default function AccessoriesPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {sortedProducts.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i % 8} />
+                  <ProductCard key={product._id} product={product} index={i % 8} />
                 ))}
               </div>
             )}

@@ -16,6 +16,8 @@ export const createProductSchema = z.object({
     price: z
       .number({ required_error: 'السعر مطلوب', invalid_type_error: 'السعر يجب أن يكون رقماً' })
       .min(0, 'السعر يجب أن يكون أكبر من أو يساوي 0'),
+    buyingPrice: z.number().min(0).optional(),
+    sellingPrice: z.number().min(0).optional(),
     stock: z
       .number({ required_error: 'المخزون مطلوب', invalid_type_error: 'المخزون يجب أن يكون رقماً' })
       .int('المخزون يجب أن يكون عدداً صحيحاً')
@@ -24,12 +26,21 @@ export const createProductSchema = z.object({
       .string({ required_error: 'التصنيف مطلوب' })
       .trim()
       .min(1, 'التصنيف مطلوب'),
+    subcategory: z.string().trim().optional(),
+    brand: z.string().trim().optional(),
+    imageUrl: z.string().url('يجب أن تكون الصورة URL صالح').optional().or(z.literal('')),
     images: z
       .array(z.string().url('يجب أن تكون الصورة URL صالح'))
       .max(5, 'لا يمكن رفع أكثر من 5 صور')
       .optional()
       .default([]),
-    isPublished: z.boolean().optional().default(false),
+    isPublished: z.boolean().optional().default(true),
+    rating: z.number().min(0).max(5).optional(),
+    reviewCount: z.number().int().min(0).optional(),
+    oldPrice: z.number().min(0).optional(),
+    badge: z.string().trim().optional(),
+    isFeatured: z.boolean().optional(),
+    isNew: z.boolean().optional(),
   }),
 });
 
@@ -51,13 +62,27 @@ export const updateProductSchema = z.object({
       .number()
       .min(0, 'السعر يجب أن يكون أكبر من أو يساوي 0')
       .optional(),
+    buyingPrice: z.number().min(0).optional(),
+    sellingPrice: z.number().min(0).optional(),
     stock: z
       .number()
       .int('المخزون يجب أن يكون عدداً صحيحاً')
       .min(0, 'المخزون يجب أن يكون أكبر من أو يساوي 0')
       .optional(),
     category: z.string().trim().optional(),
-    images: z.array(z.string().url('يجب أن تكون الصورة URL صالح')).max(5, 'لا يمكن رفع أكثر من 5 صور').optional(),
+    subcategory: z.string().trim().optional(),
+    brand: z.string().trim().optional(),
+    imageUrl: z.string().url('يجب أن تكون الصورة URL صالح').optional().or(z.literal('')),
+    images: z
+      .array(z.string().url('يجب أن تكون الصورة URL صالح'))
+      .max(5, 'لا يمكن رفع أكثر من 5 صور')
+      .optional(),
     isPublished: z.boolean().optional(),
+    rating: z.number().min(0).max(5).optional(),
+    reviewCount: z.number().int().min(0).optional(),
+    oldPrice: z.number().min(0).optional(),
+    badge: z.string().trim().optional(),
+    isFeatured: z.boolean().optional(),
+    isNew: z.boolean().optional(),
   }),
 });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, ArrowLeft } from 'lucide-react';
-import { searchProducts } from '@/services/mockApi';
+import { searchProducts } from '@/services/api';
 import type { Product } from '@/types';
 import ProductCard from '@/components/ui-custom/ProductCard';
 
@@ -76,7 +76,7 @@ export default function SearchPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {results.map((product, i) => (
-              <ProductCard key={product.id} product={product} index={i % 8} />
+              <ProductCard key={product._id} product={product} index={i % 8} />
             ))}
           </div>
         )}

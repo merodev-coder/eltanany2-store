@@ -8,10 +8,15 @@ const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;  // 30 days in ms
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const COOKIE_OPTIONS = {
+const COOKIE_OPTIONS: {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'strict' | 'lax' | 'none';
+  path: string;
+} = {
   httpOnly: true,
   secure: isProd,
-  sameSite: isProd ? 'strict' : 'lax' as const,
+  sameSite: isProd ? 'strict' : 'lax',
   path: '/',
 };
 
@@ -21,11 +26,11 @@ export function generateUserTokens(userId: string) {
   const userRefreshPayload = { sub: userId, type: 'user_refresh' };
 
   const accessToken = jwt.sign(userPayload, process.env.USER_JWT_SECRET!, {
-    expiresIn: process.env.USER_JWT_EXPIRES_IN || '4d',
+    expiresIn: (process.env.USER_JWT_EXPIRES_IN || '4d') as jwt.StringValue,
   });
 
   const refreshToken = jwt.sign(userRefreshPayload, process.env.USER_REFRESH_SECRET!, {
-    expiresIn: process.env.USER_REFRESH_EXPIRES_IN || '30d',
+    expiresIn: (process.env.USER_REFRESH_EXPIRES_IN || '30d') as jwt.StringValue,
   });
 
   return { accessToken, refreshToken };
@@ -37,11 +42,11 @@ export function generateAdminTokens(adminId: string) {
   const adminRefreshPayload = { sub: adminId, type: 'admin_refresh' };
 
   const accessToken = jwt.sign(adminPayload, process.env.ADMIN_JWT_SECRET!, {
-    expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '4d',
+    expiresIn: (process.env.ADMIN_JWT_EXPIRES_IN || '4d') as jwt.StringValue,
   });
 
   const refreshToken = jwt.sign(adminRefreshPayload, process.env.ADMIN_REFRESH_SECRET!, {
-    expiresIn: process.env.ADMIN_REFRESH_EXPIRES_IN || '30d',
+    expiresIn: (process.env.ADMIN_REFRESH_EXPIRES_IN || '30d') as jwt.StringValue,
   });
 
   return { accessToken, refreshToken };

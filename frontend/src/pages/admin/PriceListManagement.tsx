@@ -1,166 +1,452 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, FileText, RefreshCw, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { getPriceList, uploadPriceList } from '@/services/mockApi';
-import type { PriceListFile } from '@/types';
+// frontend/src/pages/admin/PriceListManagement.tsx
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} بايت`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ك.ب`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} م.ب`;
+import { useState, useCallback } from "react";
+import axiosClient from "@/api/apiClient";
+import {
+  UploadDropzone,
+  type UploadDropzoneProps,
+} from "@/components/ui/uploadthing";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface PriceListState {
+  url: string;
+  fileName: string;
+  uploadedAt: string | null;
 }
 
-export default function PriceListManagement() {
-  const [currentFile, setCurrentFile] = useState<PriceListFile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+/**
+ * UploadThing v7 onClientUploadComplete callback receives an array of
+ * upload result objects whose fields are `url` and `name` (NOT `fileUrl` /
+ * `fileName`).  The previous code was checking `fileUrl` / `fileName` and
+ * throwing "لم يتم استلام بيانات الملف من الخادم" on every successful
+ * upload.  This type reflects the real contract.
+ */
+type UTUploadResult = { url: string; name: string };
 
-  const loadFile = useCallback(async () => {
-    setLoading(true);
-    const file = await getPriceList();
-    setCurrentFile(file);
-    setLoading(false);
+type DropzoneConfig = UploadDropzoneProps<UTUploadResult>["config"];
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
+export default function PriceListManagement() {
+  const [priceList, setPriceList] = useState<PriceListState | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // ── Fetch on mount ─────────────────────────────────────────────────────
+
+  const fetchPriceList = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const response = await axiosClient.get("/admin/settings/price-list");
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(response.data?.message ?? "فشل التحميل");
+      }
+      setPriceList({
+        url: response.data.data.url ?? "",
+        fileName: response.data.data.fileName ?? "",
+        uploadedAt: response.data.data.uploadedAt ?? null,
+      });
+    } catch (err: unknown) {
+      setPriceList({ url: "", fileName: "", uploadedAt: null });
+      setErrorMessage(
+        err instanceof Error ? err.message : "فشل تحميل قائمة الأسعار",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
-    loadFile();
-  }, [loadFile]);
+  // ── Upload handler (UploadDropzone callback) ───────────────────────────
+  // Fix: use `url` and `name` (not `fileUrl` / `fileName`).
+  // The axios POST sends the same corrected keys so the backend stores
+  // them verbatim — no mapping layer needed.
 
-  const handleFile = async (file: File) => {
-    setError('');
-    if (!file.name.toLowerCase().endsWith('.docx')) {
-      setError('يُسمح فقط بملفات .docx');
-      return;
-    }
-    setUploading(true);
+  const handleUploadComplete = useCallback(
+    async (res: UTUploadResult[]) => {
+      setSuccessMessage("");
+      setErrorMessage("");
+
+      if (!res?.[0]?.url || !res[0].name) {
+        setErrorMessage("لم يتم استلام بيانات الملف من الخادم");
+        return;
+      }
+
+      try {
+        const response = await axiosClient.post(
+          "/admin/settings/price-list",
+          {
+            url: res[0].url,
+            fileName: res[0].name,
+          },
+        );
+
+        if (!response.data?.success || !response.data?.data) {
+          throw new Error(
+            response.data?.message ?? "فشل تحديث قائمة الأسعار",
+          );
+        }
+
+        setPriceList({
+          url: response.data.data.url,
+          fileName: response.data.data.fileName,
+          uploadedAt: response.data.data.uploadedAt ?? new Date().toISOString(),
+        });
+        setSuccessMessage("تم رفع قائمة الأسعار بنجاح");
+        setTimeout(() => setSuccessMessage(""), 4_000);
+      } catch (err: unknown) {
+        setErrorMessage(
+          err instanceof Error ? err.message : "فشل رفع الملف",
+        );
+      }
+    },
+    [],
+  );
+
+  const handleUploadError = useCallback((error: Error) => {
+    setErrorMessage(`فشل رفع الملف: ${error.message}`);
+  }, []);
+
+  // ── Delete handler ─────────────────────────────────────────────────────
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    setSuccessMessage("");
+    setErrorMessage("");
     try {
-      const uploaded = await uploadPriceList(file);
-      setCurrentFile(uploaded);
-    } catch {
-      setError('فشل رفع الملف. حاول مرة أخرى.');
+      const response = await axiosClient.post(
+        "/admin/settings/price-list",
+        { url: "", fileName: "" },
+      );
+
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(response.data?.message ?? "فشل الحذف");
+      }
+
+      setPriceList({ url: "", fileName: "", uploadedAt: null });
+      setSuccessMessage("تم حذف قائمة الأسعار بنجاح");
+      setTimeout(() => setSuccessMessage(""), 4_000);
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "فشل حذف القائمة",
+      );
     } finally {
-      setUploading(false);
+      setIsDeleting(false);
     }
+  }, []);
+
+  // ── Shared dropzone config (docx only, 16 MB max, 1 file) ──────────────
+  // Placed outside render to avoid recreating on every render pass.
+  const dropzoneConfig: DropzoneConfig = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+      maxFileSize: "16MB",
+      maxFileCount: 1,
+    },
   };
 
-  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-    e.target.value = '';
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  };
-
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(true);
-  };
-
-  const onDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl shadow-card p-12 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-steel-light border-t-ignition-start rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
+      {/* ── Header ───────────────────────────────────────────────────── */}
       <div>
-        <h3 className="font-heading font-bold text-lg text-[#18181B]">إدارة قائمة الأسعار</h3>
-        <p className="font-body text-sm text-slate mt-1">ارفع ملف Word (.docx) لعرضه في صفحة قائمة الأسعار العامة</p>
+        <h2 className="font-heading font-bold text-xl text-[#18181B]">
+          إدارة قائمة الأسعار
+        </h2>
+        <p className="font-body text-sm text-slate mt-1">
+          رفع وإدارة ملف قائمة الأسعار بصيغة .docx
+        </p>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-error/10 border border-error/20 text-error font-body text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {currentFile && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-steel-light rounded-xl p-5"
+      {/* ── Success / Error banners ───────────────────────────────────── */}
+      {successMessage && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/10 p-4"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-ignition-start/10 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-ignition-start" />
-              </div>
-              <div>
-                <p className="font-heading font-bold text-sm text-[#18181B]">{currentFile.name}</p>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                  <span className="font-body text-xs text-slate">
-                    تاريخ الرفع: {new Date(currentFile.uploadDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                  <span className="font-body text-xs text-slate">
-                    الحجم: {formatFileSize(currentFile.size)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-ignition-start text-ignition-start font-body text-sm font-medium hover:bg-ignition-start/5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${uploading ? 'animate-spin' : ''}`} />
-              استبدال الملف
-            </button>
-          </div>
-        </motion.div>
+          <CheckIcon className="h-5 w-5 text-success" />
+          <p className="font-body text-sm text-success">{successMessage}</p>
+        </div>
       )}
 
-      <div
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onClick={() => !uploading && inputRef.current?.click()}
-        className={`bg-white border-2 border-dashed rounded-xl p-10 sm:p-14 text-center cursor-pointer transition-colors duration-200 ${
-          dragActive
-            ? 'border-ignition-start bg-ignition-start/5'
-            : 'border-steel-dark/30 hover:border-ignition-start/50'
-        } ${uploading ? 'pointer-events-none opacity-60' : ''}`}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          onChange={onInputChange}
-          className="hidden"
-        />
-        <div className="flex flex-col items-center gap-3">
-          {uploading ? (
-            <div className="w-10 h-10 border-2 border-steel-light border-t-ignition-start rounded-full animate-spin" />
-          ) : (
-            <div className="w-14 h-14 rounded-full bg-steel-light flex items-center justify-center">
-              <Upload className="w-6 h-6 text-[#18181B]" />
-            </div>
-          )}
-          <div>
-            <p className="font-heading font-bold text-[#18181B]">
-              {currentFile ? 'اسحب ملفاً جديداً أو انقر للاستبدال' : 'اسحب ملف .docx هنا أو انقر للرفع'}
-            </p>
-            <p className="font-body text-sm text-slate mt-1">الصيغة المدعومة: .docx فقط</p>
-          </div>
+      {errorMessage && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-error/20 bg-error/10 p-4"
+        >
+          <AlertIcon className="h-5 w-5 text-error" />
+          <p className="font-body text-sm text-error">{errorMessage}</p>
+          <button
+            type="button"
+            onClick={() => setErrorMessage("")}
+            className="mr-auto text-error/60 hover:text-error transition-colors"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
         </div>
+      )}
+
+      {/* ── Card ──────────────────────────────────────────────────────── */}
+      <div className="rounded-card bg-white p-6 shadow-sm">
+        {isLoading ? (
+          // ── Loading ──────────────────────────────────────────────────
+          <div className="flex flex-col items-center justify-center py-16">
+            <SpinnerIcon className="h-8 w-8 animate-spin text-ignition-start" />
+            <p className="mt-3 font-body text-sm text-slate">
+              جاري تحميل…
+            </p>
+          </div>
+        ) : priceList?.url ? (
+          // ── Existing file view ──────────────────────────────────────
+          <div className="space-y-4">
+            {/* File card */}
+            <div className="rounded-xl bg-steel-light/30 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                    <FileIcon className="h-6 w-6 text-ignition-start" />
+                  </div>
+                  <div className="min-w-0">
+                    <p
+                      className="truncate font-heading font-bold text-lg text-[#18181B]"
+                      title={priceList.fileName}
+                    >
+                      {priceList.fileName}
+                    </p>
+                    {priceList.uploadedAt && (
+                      <p className="mt-1 font-body text-xs text-slate">
+                        تم الرفع:{" "}
+                        {new Date(priceList.uploadedAt).toLocaleDateString(
+                          "ar-EG",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delete button */}
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="rounded-xl p-3 text-error transition-colors hover:bg-error/10 disabled:opacity-50 flex-shrink-0"
+                  title="حذف قائمة الأسعار"
+                >
+                  {isDeleting ? (
+                    <SpinnerIcon className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <TrashIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Info note */}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4">
+              <p className="font-body text-sm text-blue-800">
+                <strong>ملاحظة:</strong> ستظهر هذه القائمة في صفحة قائمة
+                الأسعار العامة (/price-list) عند رفع ملف جديد.
+              </p>
+            </div>
+
+            {/* Replace file — FULL dropzone click zone */}
+            <div className="border-slate-light border-t pt-4">
+              <p className="mb-3 font-body text-sm text-slate">
+                رفع ملف جديد لاستبدال القائمة الحالية:
+              </p>
+              <UploadDropzone
+                endpoint="priceListUploader"
+                config={dropzoneConfig}
+                onClientUploadComplete={handleUploadComplete}
+                onUploadError={handleUploadError}
+              />
+            </div>
+          </div>
+        ) : (
+          // ── Empty state — FULL dropzone click zone ────────────────────
+          <div className="space-y-4">
+            <UploadDropzone
+              endpoint="priceListUploader"
+              config={dropzoneConfig}
+              onClientUploadComplete={handleUploadComplete}
+              onUploadError={handleUploadError}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl bg-steel-light/30 p-4">
+                <p className="font-body text-xs text-slate">
+                  <strong>الصيغة المقبولة:</strong> .docx فقط
+                </p>
+              </div>
+              <div className="rounded-xl bg-steel-light/30 p-4">
+                <p className="font-body text-xs text-slate">
+                  <strong>الحد الأقصى للحجم:</strong> 16 ميجابايت
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Footer hook for future "view file" action ──────────────────── */}
+      {priceList?.url && !isLoading && (
+        <div className="text-center">
+          <a
+            href={priceList.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-steel-light px-4 py-2 font-body text-sm text-slate transition-colors hover:border-ignition-start hover:text-ignition-start"
+          >
+            <ExternalLinkIcon className="h-4 w-4" />
+            فتح الملف في标签 تبويب جديد
+          </a>
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inline SVG icon shims (kept as-is from your existing component)    */
+/* ------------------------------------------------------------------ */
+
+function FileIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002h12a2 2 0 002-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+function SpinnerIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        strokeWidth={3}
+        stroke="currentColor"
+        className="opacity-25"
+      />
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        strokeWidth={3}
+        stroke="currentColor"
+        strokeLinecap="round"
+        className="opacity-75"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function AlertIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function XIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }

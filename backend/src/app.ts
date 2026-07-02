@@ -1,129 +1,115 @@
 // backend/src/app.ts
+// Load environment variables FIRST before any other imports
+import './config/env.js';
+
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
 import cors from 'cors';
-import morgan from 'morgan';
 import path from 'path';
 
-import { generalLimiter } from './middleware/rateLimiter.js';
-import sanitizeMiddleware from './middleware/sanitize.js';
-import errorHandler from './middleware/errorHandler.js';
-import adminOriginCheck from './middleware/adminOriginCheck.js';
-import logger from './utils/logger.js';
+// Import the centralized DB module once — this triggers all 4 connections in parallel
+import './config/db.js';
 
-// Routes
+// ── MODEL REGISTRATION (must be BEFORE routes) ───────────────
+// Routes import controllers. Controllers import models. If a model file
+// hasn't been evaluated yet, its schema won't be registered on the
+// correct mongoose connection, and any call to mongoose.model() or
+// connection.model() will fail with "Schema hasn't been registered".
+// Importing models here guarantees they register before any route
+// or controller is loaded.
+import './models/user/User.model.js';
+import './models/user/Cart.model.js';
+import './models/user/Order.model.js';
+import './models/admin/Product.model.js';
+import './models/admin/Admin.model.js';
+import './models/admin/AdminSettings.model.js';
+import './models/admin/Governorate.model.js';
+
+// Import routes (AFTER models are registered)
 import userAuthRoutes from './routes/user/auth.routes.js';
+import userCartRoutes from './routes/user/cart.routes.js';
 import userOrderRoutes from './routes/user/order.routes.js';
 import userProfileRoutes from './routes/user/profile.routes.js';
-import userCartRoutes from './routes/user/cart.routes.js';
+import userReceiptRoutes from './routes/user/receipt.routes.js';
 import adminAuthRoutes from './routes/admin/auth.routes.js';
 import adminProductRoutes from './routes/admin/product.routes.js';
+import adminOrderRoutes from './routes/admin/order.routes.js';
 import adminGovernorateRoutes from './routes/admin/governorate.routes.js';
+import adminSettingsRoutes from './routes/admin/settings.routes.js';
+import adminAnalyticsRoutes from './routes/admin/analytics.routes.js';
 import publicProductRoutes from './routes/public/product.routes.js';
 import publicGovernorateRoutes from './routes/public/governorate.routes.js';
-import userUploadRoutes from './routes/user/upload.routes.js';
+import publicSettingsRoutes from './routes/public/settings.routes.js';
+
+// Import middleware
+import errorHandler from './middleware/errorHandler.js';
+import { generalLimiter } from './middleware/rateLimiter.js';
+import sanitize from './middleware/sanitize.js';
+import { createRouteHandler } from 'uploadthing/express';
+import { uploadRouter } from './uploadthing.js';
 
 const app = express();
 
-// ── Express app factory (no listen) ──────────────────────
+// ── Trust proxy (for rate limiting behind proxies) ───────
+app.set('trust proxy', 1);
 
-// ── Security: Disable x-powered-by ─────────────────────
-app.disable('x-powered-by');
+// ── CORS ───────────────────────────────────────────────────
+// Allow all origins for development
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 
-// ── Security: Helmet ───────────────────────────────────
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", process.env.CLIENT_URL || ""],
-        fontSrc: ["'self'", "https:", "data:"],
-        objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
-        frameAncestors: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-      },
-    },
-    hsts: {
-      maxAge: 31536000, // 31,536,000 seconds = 1 year
-      includeSubDomains: true,
-      preload: true,
-    },
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-  })
-);
-
-// ── CORS ───────────────────────────────────────────────
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowedOrigin = process.env.CLIENT_URL;
-      if (!origin || origin === allowedOrigin) {
-        return callback(null, true);
-      }
-      callback(new Error('CORS: Origin not allowed'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Origin'],
-  })
-);
-
-// ── Body parsing ───────────────────────────────────────
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+// ── Body parsing ────────────────────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// ── Request logging ────────────────────────────────────
-if (process.env.NODE_ENV === 'production') {
-  app.use(morgan('combined', { stream: { write: (msg: string) => logger.info(msg.trim()) } }));
-} else {
-  app.use(morgan('dev'));
-}
+// ── Security middleware ─────────────────────────────────────
+app.use(sanitize);
+app.use(generalLimiter);
 
-// ── Sanitization ───────────────────────────────────────
-app.use(sanitizeMiddleware);
+// ── Static files (uploaded receipts) ────────────────────
+app.use('/uploads', express.static(path.resolve('uploads')));
 
-// ── General rate limiter ───────────────────────────────
-app.use('/api/v1', generalLimiter);
-
-// ── Admin Origin Check (returns 404 if missing) ────────
-app.use('/api/v1/admin', adminOriginCheck);
-
-// ── Health check ───────────────────────────────────────
-app.get('/api/v1/health', (_req, res) => {
-  res.status(200).json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+// ── Health check ────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
 
-// ── Routes ───────────────────────────────────────────────
-app.use('/api/v1/users/auth', userAuthRoutes);
-app.use('/api/v1/users/orders', userOrderRoutes);
-app.use('/api/v1/users/profile', userProfileRoutes);
-app.use('/api/v1/users/cart', userCartRoutes);
-app.use('/api/v1/admin/auth', adminAuthRoutes);
-app.use('/api/v1/admin/products', adminProductRoutes);
-// ── Static files (uploads) ─────────────────────────────
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
-app.use('/api/v1/admin/governorates', adminGovernorateRoutes);
+// ── Uploadthing route handler ─────────────────────────────
+app.use(
+  '/api/uploadthing',
+  createRouteHandler({
+    router: uploadRouter,
+    config: {
+      token: process.env.UPLOADTHING_TOKEN,
+    },
+  })
+);
+
+// ── API Routes ──────────────────────────────────────────────
+// Public routes
 app.use('/api/v1/public/products', publicProductRoutes);
 app.use('/api/v1/public/governorates', publicGovernorateRoutes);
-app.use('/api/v1/users/upload', userUploadRoutes);
+app.use('/api/v1/public/settings', publicSettingsRoutes);
 
-// ── 404 Handler ────────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'المسار غير موجود',
-  });
-});
+// User routes
+app.use('/api/v1/users/auth', userAuthRoutes);
+app.use('/api/v1/users/cart', userCartRoutes);
+app.use('/api/v1/users/orders', userOrderRoutes);
+app.use('/api/v1/users/profile', userProfileRoutes);
+app.use('/api/v1/users/receipts', userReceiptRoutes);
 
-// ── Error Handler (must be last) ───────────────────────
+// Admin routes
+app.use('/api/v1/admin/auth', adminAuthRoutes);
+app.use('/api/v1/admin/products', adminProductRoutes);
+app.use('/api/v1/admin/orders', adminOrderRoutes);
+app.use('/api/v1/admin/governorates', adminGovernorateRoutes);
+app.use('/api/v1/admin/settings', adminSettingsRoutes);
+app.use('/api/v1/admin/analytics', adminAnalyticsRoutes);
+
+// ── Error handling ─────────────────────────────────────────
 app.use(errorHandler);
 
 export default app;

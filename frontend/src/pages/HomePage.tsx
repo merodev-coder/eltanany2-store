@@ -1,17 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Star, Shield, Tag, Truck, Headphones, RefreshCw, Gamepad, Briefcase, Mouse, } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Star, Shield, Tag, Truck, Headphones, RefreshCw, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '@/components/ui-custom/ProductCard';
-import { getHeroSlides, getFeaturedLaptops, getCategoryCards, getWhyCards, getStats, getTestimonials } from '@/services/mockApi';
+import { getHeroSlides, getFeaturedLaptops, getWhyCards, getStats, getTestimonials, subscribeToNewsletter } from '@/services/api';
 import type { Product, HeroSlide, WhyCard, StatItem, Testimonial } from '@/types';
 
-const categoryIcons: Record<string, typeof Gamepad> = {
-  gaming: Gamepad,
-  business: Briefcase,
-  mouse: Mouse,
-  headset: Headphones,
-};
+
 
 const whyIcons: Record<string, typeof Shield> = {
   shield: Shield,
@@ -24,7 +19,6 @@ const whyIcons: Record<string, typeof Shield> = {
 export default function HomePage() {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string; icon: string; image: string }[]>([]);
   const [whyCards, setWhyCards] = useState<WhyCard[]>([]);
   const [stats, setStats] = useState<StatItem[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
@@ -32,20 +26,21 @@ export default function HomePage() {
   const [activeWhyCard, setActiveWhyCard] = useState<number | null>(null);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [newsletterContact, setNewsletterContact] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [s, f, c, w, st, t] = await Promise.all([
+      const [s, f, w, st, t] = await Promise.all([
         getHeroSlides(),
         getFeaturedLaptops(),
-        getCategoryCards(),
         getWhyCards(),
         getStats(),
         getTestimonials(),
       ]);
       setSlides(s);
       setFeatured(f);
-      setCategories(c);
       setWhyCards(w);
       setStats(st);
       setTestimonials(t);
@@ -63,9 +58,10 @@ export default function HomePage() {
   useEffect(() => {
     if (slides.length > 0) startAutoPlay();
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [slides, startAutoPlay]);
+  }, [slides.length]);
 
   useEffect(() => {
+    if (testimonials.length === 0) return;
     const t = setInterval(() => {
       setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
     }, 5000);
@@ -79,6 +75,23 @@ export default function HomePage() {
 
   const nextSlide = () => goToSlide((currentSlide + 1) % slides.length);
   const prevSlide = () => goToSlide((currentSlide - 1 + slides.length) % slides.length);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterContact.trim()) return;
+
+    setNewsletterSubmitting(true);
+    try {
+      await subscribeToNewsletter(newsletterContact);
+      setNewsletterSuccess(true);
+      setNewsletterContact('');
+      setTimeout(() => setNewsletterSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Newsletter subscription failed:', err);
+    } finally {
+      setNewsletterSubmitting(false);
+    }
+  };
 
   return (
     <div>
@@ -201,55 +214,13 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {featured.slice(0, 8).map((product, i) => (
-              <ProductCard key={product.id} product={product} index={i} />
+              <ProductCard key={product._id} product={product} index={i} />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-ink mb-2">تسوق حسب الفئة</h2>
-            <p className="font-body text-slate">اختار اللي يناسبك بسرعة</p>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {categories.map((cat, idx) => {
-              const IconComp = categoryIcons[cat.icon] || Gamepad;
-              return (
-                <motion.div
-                  key={cat.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: idx * 0.1 }}
-                >
-                  <Link
-                    to={cat.id === 'gaming' || cat.id === 'business' ? '/laptops' : '/accessories'}
-                    className="group relative block rounded-2xl overflow-hidden aspect-[4/3]"
-                  >
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-carbon/80 via-carbon/20 to-transparent" />
-                    <div className="absolute bottom-4 right-4 left-4 flex items-end justify-between">
-                      <div>
-                        <IconComp className="w-6 h-6 text-ignition-end mb-2" />
-                        <h3 className="font-heading font-bold text-white text-lg">{cat.name}</h3>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-ignition-start transition-colors duration-200">
-                        <ChevronLeft className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+
 
       <section className="py-16 sm:py-20 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -390,16 +361,34 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-heading font-bold text-2xl sm:text-3xl text-white mb-3">اشترك في نشرتنا الإخبارية</h2>
           <p className="font-body text-white/60 mb-6">وصلك أحدث العروض والمنتجات أول بأول</p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+          <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <input
               type="text"
+              value={newsletterContact}
+              onChange={(e) => setNewsletterContact(e.target.value)}
               placeholder="رقم الواتساب أو الإيميل"
               className="flex-1 h-12 px-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 font-body outline-none focus:border-ignition-start transition-colors"
             />
-            <button className="h-12 px-6 rounded-xl gradient-brand text-white font-heading font-bold hover:shadow-glow transition-shadow duration-300">
-              اشترك
+            <button
+              type="submit"
+              disabled={newsletterSubmitting}
+              className="h-12 px-6 rounded-xl gradient-brand text-white font-heading font-bold hover:shadow-glow transition-shadow duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {newsletterSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  جاري الاشتراك...
+                </>
+              ) : newsletterSuccess ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  تم الاشتراك
+                </>
+              ) : (
+                'اشترك'
+              )}
             </button>
-          </div>
+          </form>
         </div>
       </section>
     </div>

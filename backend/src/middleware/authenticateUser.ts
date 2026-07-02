@@ -86,7 +86,7 @@ export default async function authenticateUser(
     }
 
     // ── 4. Fetch and validate user ──────────────────────
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).select('_id name email role lockUntil passwordChangedAt');
     if (!user) {
       res.clearCookie('user_access');
       res.clearCookie('user_refresh');

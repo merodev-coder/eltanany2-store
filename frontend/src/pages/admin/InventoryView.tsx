@@ -1,7 +1,7 @@
 // pages/admin/InventoryView.tsx
-// Inventory table with live CRUD: list, edit (modal), delete (inline).
+// Inventory table with server-side pagination, search, category filtering, and DB-driven stats.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Package,
   AlertTriangle,
@@ -11,13 +11,14 @@ import {
   ChevronLeft,
   Trash2,
   Edit3,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import axiosClient from '@/api/axiosClient';
+import axiosClient from '@/api/apiClient';
 import type { Product } from '@/types';
 import EditProductModal from '@/components/admin/EditProductModal';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 20;
 
 const statusConfig = {
   high: { label: 'متوفر بكثرة', className: 'bg-success/10 text-success' },
@@ -28,6 +29,9 @@ const statusConfig = {
 const categoryLabels: Record<string, string> = {
   laptop: 'لابتوب',
   accessory: 'إكسسوار',
+  desktop: 'كمبيوتر مكتبي',
+  monitor: 'شاشة',
+  component: 'قطعة غيار',
 };
 
 type CategoryFilter = 'all' | 'laptop' | 'accessory';
@@ -38,48 +42,90 @@ export default function InventoryView() {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // DB-driven stats from the API
+  const [stats, setStats] = useState({
+    totalInventoryValue: 0,
+    lowStockCount: 0,
+    activeProductsCount: 0,
+  });
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Debounce search
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 400);
+  };
 
   // ── Fetch ─────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosClient.get('/public/products');
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', PAGE_SIZE.toString());
+      if (category !== 'all') params.append('category', category);
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
+
+      const response = await axiosClient.get(`/admin/products?${params.toString()}`);
       if (response.data.success) {
         const data: Product[] = (response.data.data.products || []).map((p: any) => ({
           ...p,
           _id: p._id || p.id,
         }));
         setProducts(data);
+
+        const pagination = response.data.data.pagination;
+        if (pagination) {
+          setTotalPages(pagination.pages || 1);
+          setTotalCount(pagination.total || 0);
+        }
+
+        // Read aggregated stats from API response
+        const apiStats = response.data.data.stats;
+        if (apiStats) {
+          setStats({
+            totalInventoryValue: apiStats.totalInventoryValue || 0,
+            lowStockCount: apiStats.lowStockCount || 0,
+            activeProductsCount: apiStats.activeProductsCount || 0,
+          });
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'فشل تحميل المنتجات');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, category, debouncedSearch]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // ── Delete (optimistic) ──────────────────────────
+  // ── Delete (soft-delete by setting isPublished: false) ──────────────────────────
   const handleDelete = async (id: string) => {
-    const prev = products;
-    setProducts((prev) => prev.filter((p) => p._id !== id));
     setDeletingId(id);
 
     try {
       await axiosClient.delete(`/admin/products/${id}`);
       setConfirmDeleteId(null);
+      // Refetch products to ensure state sync
+      await fetchProducts();
     } catch (err: any) {
-      setProducts(prev);
       setError(err.response?.data?.message || 'فشل الحذف');
     } finally {
       setDeletingId(null);
@@ -96,26 +142,12 @@ export default function InventoryView() {
     );
   };
 
-  // ── Derived ───────────────────────────────────────
-  const filtered = products.filter((item) => {
-    if (category !== 'all' && item.category !== category) return false;
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return item.name.toLowerCase().includes(q);
-  });
+  const handleCategoryChange = (cat: CategoryFilter) => {
+    setCategory(cat);
+    setPage(1);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // ── Stats ─────────────────────────────────────────
-  const totalInventoryValue = products.reduce(
-    (sum, p) => sum + (p.stock || 0) * (p.buyingPrice || p.sellingPrice || 0),
-    0
-  );
-  const lowStockCount = products.filter((p) => (p.stock || 0) <= 5).length;
-  const activeProductsCount = products.filter((p) => (p.stock || 0) > 0).length;
-
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <div className="bg-white shadow-sm rounded-card p-12 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-steel-light border-t-ignition-start rounded-full animate-spin" />
@@ -150,21 +182,21 @@ export default function InventoryView() {
         {[
           {
             label: 'إجمالي المخزون',
-            value: `${totalInventoryValue.toLocaleString()} ج.م`,
+            value: `${stats.totalInventoryValue.toLocaleString()} ج.م`,
             icon: Package,
             color: 'text-ignition-start',
             bg: 'bg-ignition-start/10',
           },
           {
             label: 'قطع منخفضة المخزون',
-            value: lowStockCount.toString(),
+            value: stats.lowStockCount.toString(),
             icon: AlertTriangle,
             color: 'text-warning',
             bg: 'bg-warning/10',
           },
           {
             label: 'المنتجات النشطة',
-            value: activeProductsCount.toString(),
+            value: stats.activeProductsCount.toString(),
             icon: Layers,
             color: 'text-success',
             bg: 'bg-success/10',
@@ -194,12 +226,16 @@ export default function InventoryView() {
             <input
               type="text"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="بحث في المخزن..."
               className="w-full h-10 pr-9 pl-4 rounded-lg bg-steel-light border-0 font-body text-sm text-[#18181B] placeholder:text-slate outline-none focus:ring-2 focus:ring-ignition-start/30"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {loading && (
+              <Loader2 className="w-4 h-4 text-ignition-start animate-spin" />
+            )}
+            <span className="font-body text-xs text-slate">{totalCount} منتج</span>
             {([
               { id: 'all' as const, label: 'الكل' },
               { id: 'laptop' as const, label: 'لابتوبات' },
@@ -208,10 +244,10 @@ export default function InventoryView() {
               <button
                 key={chip.id}
                 type="button"
-                onClick={() => { setCategory(chip.id); setPage(1); }}
+                onClick={() => handleCategoryChange(chip.id)}
                 className={`px-4 py-2 rounded-xl font-body text-sm font-medium transition-all duration-200 ${
                   category === chip.id
-                    ? 'gradient-prade text-white shadow-glow'
+                    ? 'gradient-brand text-white shadow-glow'
                     : 'bg-steel-light text-slate hover:text-[#18181B]'
                 }`}
               >
@@ -238,14 +274,14 @@ export default function InventoryView() {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {products.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 font-body text-slate">
                     لا توجد منتجات مطابقة
                   </td>
                 </tr>
               ) : (
-                paginated.map((item) => (
+                products.map((item) => (
                   <tr
                     key={item._id}
                     className="border-b border-steel-light/50 last:border-0 hover:bg-steel-light/30 transition-colors"
@@ -268,7 +304,7 @@ export default function InventoryView() {
                       {(item.buyingPrice || 0).toLocaleString()} ج.م
                     </td>
                     <td className="py-3 px-4 font-body text-sm text-[#18181B] font-medium">
-                      {item.sellingPrice.toLocaleString()} ج.م
+                      {(item.sellingPrice || 0).toLocaleString()} ج.م
                     </td>
                     <td className="py-3 px-4 font-body text-sm text-[#18181B] font-medium">{item.stock}</td>
                     <td className="py-3 px-4">
@@ -305,8 +341,7 @@ export default function InventoryView() {
                               type="button"
                               onClick={() => handleDelete(item._id)}
                               disabled={deletingId === item._id}
-                              className="px-2 py-1 rounded-md bg-error/10 text-error text-xs font-body font-medium hover
-:brightness-90 transition-colors"
+                              className="px-2 py-1 rounded-md bg-error/10 text-error text-xs font-body font-medium hover:brightness-90 transition-colors"
                             >
                               نعم
                             </button>
@@ -337,7 +372,7 @@ export default function InventoryView() {
         </div>
 
         {/* Pagination */}
-        {filtered.length > PAGE_SIZE && (
+        {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-steel-light">
             <button
               type="button"
@@ -348,20 +383,9 @@ export default function InventoryView() {
               <ChevronRight className="w-4 h-4" />
               السابق
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => setPage(num)}
-                className={`w-9 h-9 rounded-lg font-body text-sm font-medium transition-all ${
-                  page === num
-                    ? 'gradient-brand text-white shadow-glow'
-                    : 'bg-steel-light text-slate hover:text-[#18181B]'
-                }`}
-              >
-                {num}
-              </button>
-            ))}
+            <span className="font-body text-sm text-[#18181B] mx-2">
+              صفحة {page} من {totalPages}
+            </span>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

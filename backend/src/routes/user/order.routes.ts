@@ -10,7 +10,13 @@ const router = Router();
 // ── Protected ──────────────────────────────────────────
 router.use(authenticateUser);
 
-router.post('/', validate(createOrderSchema), orderController.createOrder);
+// POST / — create order (accepts receiptUrl from Uploadthing)
+router.post(
+  '/',
+  validate(createOrderSchema),
+  orderController.createOrder
+);
+
 router.get('/my', orderController.getMyOrders);
 router.get('/:id', orderController.getOrderById);
 router.patch('/:id/receipt', orderController.attachReceipt);

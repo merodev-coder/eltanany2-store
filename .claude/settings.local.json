@@ -1,9 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm ls *)",
-      "Bash(dir backend *)",
-      "Bash(npx tsx *)"
+      "Bash(node -e \"const ut = require\\('@uploadthing/react'\\); console.log\\(Object.keys\\(ut\\).filter\\(k => /[Dd]rop|[Uu]pload/.test\\(k\\)\\).join\\('\\\\n'\\)\\)\")"
     ]
   }
 }

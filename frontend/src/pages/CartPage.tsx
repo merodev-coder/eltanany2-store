@@ -46,27 +46,27 @@ export default function CartPage() {
           <div className="flex-1 space-y-4">
             {items.map((item, idx) => (
               <motion.div
-                key={item.product.id}
+                key={item.product._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: idx * 0.05 }}
                 className="bg-white rounded-2xl shadow-card p-4 sm:p-5"
               >
                 <div className="flex gap-4">
-                  <Link to={`/product/${item.product.id}`} className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden flex-shrink-0 bg-steel-light">
+                  <Link to={`/product/${item.product._id}`} className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden flex-shrink-0 bg-steel-light">
                     <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
                   </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <Link to={`/product/${item.product.id}`} className="font-heading font-bold text-sm sm:text-base text-ink hover:text-ignition-start transition-colors line-clamp-1">
+                        <Link to={`/product/${item.product._id}`} className="font-heading font-bold text-sm sm:text-base text-ink hover:text-ignition-start transition-colors line-clamp-1">
                           {item.product.name}
                         </Link>
                         <p className="font-body text-xs text-slate mt-0.5">{item.product.brand}</p>
                         {item.color && <p className="font-body text-xs text-slate">اللون: {item.color}</p>}
                       </div>
                       <button
-                        onClick={() => removeItem(item.product.id)}
+                        onClick={() => removeItem(item.product._id)}
                         className="p-2 rounded-lg hover:bg-error/10 text-slate hover:text-error transition-colors flex-shrink-0"
                         aria-label="حذف"
                       >
@@ -76,7 +76,7 @@ export default function CartPage() {
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1 bg-steel-light rounded-lg p-0.5">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
                           className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-white transition-colors"
                           aria-label="نقص"
                         >
@@ -84,7 +84,7 @@ export default function CartPage() {
                         </button>
                         <span className="w-8 text-center font-body text-sm font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
                           className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-white transition-colors"
                           aria-label="زيادة"
                         >
@@ -92,7 +92,7 @@ export default function CartPage() {
                         </button>
                       </div>
                       <p className="font-heading font-bold text-base text-ink">
-                        {(item.product.price * item.quantity).toLocaleString()} ج.م
+                        {((item.product.price ?? 0) * item.quantity).toLocaleString()} ج.م
                       </p>
                     </div>
                   </div>
@@ -107,7 +107,7 @@ export default function CartPage() {
               <div className="space-y-3 mb-5">
                 <div className="flex justify-between font-body text-sm">
                   <span className="text-slate">المجموع الفرعي</span>
-                  <span className="text-ink font-medium">{totalPrice.toLocaleString()} ج.م</span>
+                  <span className="text-ink font-medium">{(totalPrice ?? 0).toLocaleString()} ج.م</span>
                 </div>
                 <div className="flex justify-between font-body text-sm">
                   <span className="text-slate">الشحن</span>
@@ -115,7 +115,7 @@ export default function CartPage() {
                 </div>
                 <div className="border-t border-steel-light pt-3 flex justify-between">
                   <span className="font-heading font-bold text-ink">الإجمالي</span>
-                  <span className="font-heading font-black text-xl text-ink">{totalPrice.toLocaleString()} ج.م</span>
+                  <span className="font-heading font-black text-xl text-ink">{(totalPrice ?? 0).toLocaleString()} ج.م</span>
                 </div>
               </div>
               <Link

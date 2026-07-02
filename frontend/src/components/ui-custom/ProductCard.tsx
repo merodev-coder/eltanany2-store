@@ -32,7 +32,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       viewport={{ once: true }}
       transition={{ duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Link to={`/product/${product.id}`} className="group block">
+      <Link to={`/product/${product._id}`} className="group block">
         <div className="bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-shadow duration-300 overflow-hidden">
           <div className="relative aspect-[4/3] overflow-hidden bg-steel-light">
             <img
@@ -72,18 +72,18 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
             <div className="flex items-center gap-1 mb-3">
               <Star className="w-3.5 h-3.5 text-ignition-end" fill="currentColor" />
               <span className="text-xs font-body text-slate">
-                {product.rating} ({product.reviewCount})
+                {(product.rating ?? 0).toFixed(1)} ({product.reviewCount ?? 0})
               </span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-2">
                 <span className="font-heading font-bold text-lg text-ink">
-                  {product.price.toLocaleString()} ج.م
+                  {(product.price ?? 0).toLocaleString()} ج.م
                 </span>
                 {product.oldPrice && (
                   <span className="text-sm text-slate line-through">
-                    {product.oldPrice.toLocaleString()}
+                    {(product.oldPrice ?? 0).toLocaleString()}
                   </span>
                 )}
               </div>

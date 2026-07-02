@@ -1,6 +1,6 @@
 // frontend/src/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axiosClient, { markUserAuthenticated, markAdminAuthenticated, clearAuthState } from '@/api/axiosClient';
+import axiosClient, { markUserAuthenticated, markAdminAuthenticated, clearAuthState } from '@/api/apiClient';
 import { getGuestCartItems, clearGuestCartCookies } from '@/utils/guestCart';
 
 export interface User {

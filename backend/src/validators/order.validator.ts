@@ -1,55 +1,70 @@
+// backend/src/validators/order.validator.ts
 import { z } from 'zod';
 
-// ── Create Order ───────────────────────────────────────
+// ── Create Order ─────────────────────────────────────────
+// When multer processes multipart/form-data, the 'items' field arrives
+// as a JSON string (because FormData can't send nested objects natively).
+// We accept a string here and let the controller JSON.parse it.
 export const createOrderSchema = z.object({
   body: z.object({
-    items: z
-      .array(
-        z.object({
-          name: z.string().min(1, 'اسم المنتج مطلوب'),
-          price: z.number().min(0, 'السعر يجب أن يكون موجباً'),
-          qty: z.number().int().min(1, 'الكمية يجب أن تكون على الأقل 1'),
-          imageUrl: z.string().min(1, 'صورة المنتج مطلوبة'),
-          color: z.string().optional(),
-        })
-      )
-      .min(1, 'الطلب يجب أن يحتوي على منتج واحد على الأقل'),
     customerName: z.string().min(1, 'اسم العميل مطلوب'),
-    customerPhone: z.string().min(1, 'رقم هاتف العميل مطلوب'),
-    governorate: z.string().min(1, 'المحافظة مطلوبة'),
-    city: z.string().min(1, 'المدينة مطلوبة'),
-    address: z.string().min(1, 'العنوان مطلوب'),
-    landmark: z.string().optional(),
-    deliveryMethod: z.enum(['home', 'pickup'], {
-      invalid_type_error: 'طريقة التوصيل غير صالحة',
+    customerPhone: z.string().min(1, 'رقم الهاتف مطلوب'),
+    customerAddress: z.string().optional(),
+    notes: z.string().optional(),
+    deliveryType: z.enum(['shipping', 'pickup'], {
+      errorMap: () => ({ message: 'نوع التوصيل يجب أن يكون شحن أو استلام من الفرع' }),
     }),
-    paymentMethod: z.enum(['cod'], {
-      invalid_type_error: 'طريقة الدفع غير صالحة',
-    }),
-    shippingCost: z.number().min(0, 'تكلفة الشحن يجب أن تكون موجبة'),
-    depositAmount: z.number().min(0, 'العربون يجب أن يكون موجباً'),
-    totalAmount: z.number().min(0, 'الإجمالي يجب أن يكون موجباً'),
-    depositSlipUrl: z.string().optional(),
-    notes: z.string().max(500, 'ملاحظات الطلب يجب أن لا تتجاوز 500 حرف').optional(),
+    governorate: z.string().optional(),
+    shippingCost: z.coerce.number().min(0).optional().default(0),
+    // paymentMethod is optional - required only for shipping
+    paymentMethod: z.enum(['vodafone_cash', 'instapay', 'cash_on_delivery']).optional().nullable(),
+    // items arrives as a JSON string from FormData
+    items: z.string().min(1, 'السلة فارغة'),
+    subtotal: z.coerce.number().min(0).optional(),
+    // receiptUrl is optional - required only for shipping
+    receiptUrl: z.string().nullable().optional(),
+  }).superRefine((data, ctx) => {
+    // For shipping orders, paymentMethod and receiptUrl are required
+    if (data.deliveryType === 'shipping') {
+      if (!data.paymentMethod) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'طريقة الدفع مطلوبة للشحن',
+          path: ['paymentMethod'],
+        });
+      }
+      if (!data.receiptUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'إيصال الدفع مطلوب للشحن',
+          path: ['receiptUrl'],
+        });
+      }
+    }
   }),
 });
 
-// ── Update Order Status (admin) ──────────────────────
+// ── Update Order Status ──────────────────────────────────
 export const updateOrderStatusSchema = z.object({
   body: z.object({
     status: z.enum(
       ['pending', 'approved', 'confirmed', 'processing', 'shipped', 'delivered', 'rejected', 'cancelled'],
-      { invalid_type_error: 'حالة الطلب غير صالحة' }
+      { errorMap: () => ({ message: 'حالة الطلب غير صالحة' }) }
     ),
+  }),
+  params: z.object({
+    id: z.string().min(1, 'معرف الطلب مطلوب'),
   }),
 });
 
-// ── Update Deposit Status (admin) ────────────────────
+// ── Update Deposit Status ───────────────────────────────
 export const updateDepositStatusSchema = z.object({
   body: z.object({
-    depositStatus: z.enum(
-      ['pending', 'confirmed', 'rejected', 'not_required'],
-      { invalid_type_error: 'حالة العربون غير صالحة' }
-    ),
+    receiptVerified: z.boolean({
+      errorMap: () => ({ message: 'قيمة التحقق يجب أن تكون true أو false' }),
+    }),
+  }),
+  params: z.object({
+    id: z.string().min(1, 'معرف الطلب مطلوب'),
   }),
 });

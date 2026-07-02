@@ -12,7 +12,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { getOrders, getMonthlyInventoryList } from '@/services/mockApi';
+import { getOrders, getMonthlyInventoryList } from '@/services/api';
 import type { Order, MonthlyInventorySnapshot } from '@/types';
 
 interface MonthData {
@@ -108,7 +108,7 @@ export default function SalesOverviewView() {
     () =>
       orders
         .filter((o) => o.status !== 'cancelled')
-        .reduce((sum, o) => sum + o.total, 0),
+        .reduce((sum, o) => sum + o.totalValue, 0),
     [orders],
   );
 
@@ -155,13 +155,13 @@ export default function SalesOverviewView() {
     orders
       .filter((o) => o.status !== 'cancelled')
       .forEach((o) => {
-        const d = new Date(o.date);
+        const d = new Date(o.createdAt);
         const monthKey = `${d.getMonth() + 1}`.padStart(2, '0');
         if (monthMap.has(monthKey)) {
           const entry = monthMap.get(monthKey)!;
           entry.orders += 1;
           if (entry.revenue === 0) {
-            entry.revenue += o.total;
+            entry.revenue += o.totalValue;
           }
           if (entry.items === 0) {
             entry.items += o.items.reduce((s, i) => s + i.quantity, 0);

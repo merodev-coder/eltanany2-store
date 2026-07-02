@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import ProductCard from '@/components/ui-custom/ProductCard';
-import { getAllLaptops, filterLaptops, getFilterOptions } from '@/services/mockApi';
+import { getAllLaptops, filterLaptops, getFilterOptions } from '@/services/api';
 import type { Product } from '@/types';
 
 export default function LaptopsPage() {
@@ -14,7 +14,14 @@ export default function LaptopsPage() {
     brand: true, price: true, category: true, cpu: false, gpu: false, ram: false, storage: false, screen: false, os: false,
   });
 
-  const filterOptions = useMemo(() => getFilterOptions(), []);
+  const filterOptions = {
+    brands: ['Dell', 'HP', 'Lenovo', 'Apple', 'ASUS', 'Acer', 'MSI'],
+    cpus: ['Core i3', 'Core i5', 'Core i7', 'Core i9', 'Ryzen 5', 'Ryzen 7', 'Ryzen 9', 'Apple M1', 'Apple M2', 'Apple M3'],
+    gpus: ['Intel Iris Xe', 'Intel UHD Graphics', 'AMD Radeon', 'NVIDIA GTX 1650', 'NVIDIA RTX 3050', 'NVIDIA RTX 4050', 'NVIDIA RTX 4060', 'Apple GPU'],
+    rams: ['8GB', '16GB', '32GB', '64GB'],
+    storages: ['256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD'],
+    oss: ['Windows 11', 'macOS', 'Dos / Linux'],
+  };
 
   const [selectedBrands, setSelectedBrands] = useState<string[]>(() => {
     const b = searchParams.get('brand');
@@ -86,13 +93,13 @@ export default function LaptopsPage() {
       case 'price-asc': return sorted.sort((a, b) => a.price - b.price);
       case 'price-desc': return sorted.sort((a, b) => b.price - a.price);
       case 'rating': return sorted.sort((a, b) => b.rating - a.rating);
-      case 'newest': return sorted.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
+      case 'newest': return sorted.sort((a, b) => (b.isBrandNew ? 1 : 0) - (a.isBrandNew ? 1 : 0));
       default: return sorted;
     }
   }, [products, sortBy]);
 
-  const checkbox = (label: string, checked: boolean, onChange: () => void, count?: number) => (
-    <label className="flex items-center gap-2 py-1.5 cursor-pointer group">
+  const checkbox = (label: string, checked: boolean, onChange: () => void, key?: string, count?: number) => (
+    <label key={key || label} className="flex items-center gap-2 py-1.5 cursor-pointer group">
       <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors duration-150 ${
         checked ? 'bg-ignition-start border-ignition-start' : 'border-steel-dark/40 group-hover:border-ignition-start'
       }`}>
@@ -105,7 +112,7 @@ export default function LaptopsPage() {
   );
 
   const filterSection = (title: string, key: string, content: React.ReactNode) => (
-    <div className="border-b border-steel-light last:border-0">
+    <div key={`filter-${key}`} className="border-b border-steel-light last:border-0">
       <button onClick={() => toggleSection(key)} className="flex items-center justify-between w-full py-3">
         <span className="font-heading font-bold text-sm text-ink">{title}</span>
         <ChevronDown className={`w-4 h-4 text-slate transition-transform duration-200 ${expandedSections[key] ? 'rotate-180' : ''}`} />
@@ -186,7 +193,7 @@ export default function LaptopsPage() {
 
               {filterSection('الماركة', 'brand',
                 <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {filterOptions.brands.map(b => checkbox(b, selectedBrands.includes(b), () => toggleArrayFilter(b, selectedBrands, setSelectedBrands)))}
+                  {filterOptions.brands.map(b => checkbox(b, selectedBrands.includes(b), () => toggleArrayFilter(b, selectedBrands, setSelectedBrands), `brand-${b}`))}
                 </div>
               )}
 
@@ -195,7 +202,8 @@ export default function LaptopsPage() {
                   {['gaming', 'business'].map(c => checkbox(
                     c === 'gaming' ? 'ألعاب' : 'أعمال',
                     selectedCategory.includes(c),
-                    () => toggleArrayFilter(c, selectedCategory, setSelectedCategory)
+                    () => toggleArrayFilter(c, selectedCategory, setSelectedCategory),
+                    `cat-${c}`
                   ))}
                 </div>
               )}
@@ -220,31 +228,31 @@ export default function LaptopsPage() {
 
               {filterSection('المعالج', 'cpu',
                 <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {filterOptions.cpus.map(c => checkbox(c, selectedCpu.includes(c), () => toggleArrayFilter(c, selectedCpu, setSelectedCpu)))}
+                  {filterOptions.cpus.map(c => checkbox(c, selectedCpu.includes(c), () => toggleArrayFilter(c, selectedCpu, setSelectedCpu), `cpu-${c}`))}
                 </div>
               )}
 
               {filterSection('كرت الشاشة', 'gpu',
                 <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {filterOptions.gpus.map(g => checkbox(g, selectedGpu.includes(g), () => toggleArrayFilter(g, selectedGpu, setSelectedGpu)))}
+                  {filterOptions.gpus.map(g => checkbox(g, selectedGpu.includes(g), () => toggleArrayFilter(g, selectedGpu, setSelectedGpu), `gpu-${g}`))}
                 </div>
               )}
 
               {filterSection('الرام', 'ram',
                 <div className="space-y-0.5">
-                  {filterOptions.rams.map(r => checkbox(r, selectedRam.includes(r), () => toggleArrayFilter(r, selectedRam, setSelectedRam)))}
+                  {filterOptions.rams.map(r => checkbox(r, selectedRam.includes(r), () => toggleArrayFilter(r, selectedRam, setSelectedRam), `ram-${r}`))}
                 </div>
               )}
 
               {filterSection('التخزين', 'storage',
                 <div className="space-y-0.5">
-                  {filterOptions.storages.map(s => checkbox(s, selectedStorage.includes(s), () => toggleArrayFilter(s, selectedStorage, setSelectedStorage)))}
+                  {filterOptions.storages.map(s => checkbox(s, selectedStorage.includes(s), () => toggleArrayFilter(s, selectedStorage, setSelectedStorage), `storage-${s}`))}
                 </div>
               )}
 
               {filterSection('نظام التشغيل', 'os',
                 <div className="space-y-0.5">
-                  {filterOptions.oss.map(o => checkbox(o, selectedOs.includes(o), () => toggleArrayFilter(o, selectedOs, setSelectedOs)))}
+                  {filterOptions.oss.map(o => checkbox(o, selectedOs.includes(o), () => toggleArrayFilter(o, selectedOs, setSelectedOs), `os-${o}`))}
                 </div>
               )}
             </div>
@@ -275,7 +283,7 @@ export default function LaptopsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {sortedProducts.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i % 6} />
+                  <ProductCard key={product._id || i} product={product} index={i % 6} />
                 ))}
               </div>
             )}

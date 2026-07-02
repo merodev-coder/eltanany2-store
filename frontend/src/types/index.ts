@@ -11,8 +11,10 @@ export interface Product {
   name: string;           // اسم المنتج
   category: 'laptop' | 'accessory';
   subcategory?: string;
-  buyingPrice: number;    // سعر الشراء
-  sellingPrice: number;   // سعر البيع
+  brand?: string;         // الماركة
+  buyingPrice?: number;    // سعر الشراء
+  price: number;           // سعر البيع (alias for sellingPrice)
+  sellingPrice?: number;   // سعر البيع (legacy)
   stock: number;          // المخزون
   imageUrl?: string;
   images?: string[];      // for backward compat
@@ -20,11 +22,13 @@ export interface Product {
   specs?: Record<string, string>;
   rating?: number;
   reviewCount?: number;
-  isNew?: boolean;
+  isBrandNew?: boolean;
   isFeatured?: boolean;
   badge?: string;
+  isPublished?: boolean;  // for soft-delete
   createdAt: string;
   updatedAt?: string;
+  oldPrice?: number;       // for discounts
 }
 
 // ────────────────────────────────────────────────────────────
@@ -40,39 +44,52 @@ export type OrderStatus =
   | 'rejected'
   | 'cancelled';
 
+export type DeliveryType = 'shipping' | 'pickup';
+export type PaymentMethod = 'vodafone_cash' | 'instapay' | 'cash_on_delivery';
+
 export interface OrderItem {
   productId: string;
   name: string;
   quantity: number;
   price: number;
   imageUrl?: string;
+  color?: string;
 }
 
 export interface Order {
   _id: string;
   orderNumber: string;      // رقم الطلب
-  customerName: string;     // اسم العميل
+  user?: string | { _id: string; name: string; email: string; phone?: string };
+  customerName: string;     // اسم العميل (alias for customerInfo.name)
   customerPhone?: string;
   customerAddress?: string;
-  createdAt: string;        // تاريخ الطلب
-  totalValue: number;       // القيمة الإجمالية
-  status: OrderStatus;
-  receiptUrl?: string;      // UploadThing URL for عربون photo
-  items: OrderItem[];
   notes?: string;
+  createdAt: string;        // تاريخ الطلب
+  totalValue: number;       // القيمة الإجمالية (alias for totalAmount)
+  subtotal?: number;        // المجموع الفرعي
+  shippingCost?: number;    // رسوم الشحن
+  status: OrderStatus;
+  deliveryType?: DeliveryType;
+  paymentMethod?: PaymentMethod;
+  receiptUrl?: string;      // UploadThing URL for عربون photo
+  receiptVerified?: boolean;
+  items: OrderItem[];
   depositAmount?: number;
-  shippingCost?: number;
+  isPaid?: boolean;
+  paidAt?: string;
 }
 
 // ────────────────────────────────────────────────────────────
 // Cart
 // ────────────────────────────────────────────────────────────
 export interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  qty: number;
-  imageUrl: string;
+  product: {
+    _id: string;
+    name: string;
+    price: number;
+    images: string[];
+  };
+  quantity: number;
   color?: string;
 }
 
@@ -112,6 +129,14 @@ export interface Governorate {
 }
 
 // ────────────────────────────────────────────────────────────
+// Payment Settings
+// ────────────────────────────────────────────────────────────
+export interface PaymentMethods {
+  vodafoneCashNumber: string;
+  instaPayAccount: string;
+}
+
+// ────────────────────────────────────────────────────────────
 // Auth
 // ────────────────────────────────────────────────────────────
 export interface User {
@@ -122,4 +147,16 @@ export interface User {
   avatar?: string;
   role: string;
   createdAt: string;
+}
+
+// ────────────────────────────────────────────────────────────
+// Monthly Inventory Snapshot
+// ────────────────────────────────────────────────────────────
+export interface MonthlyInventorySnapshot {
+  _id: string;
+  monthKey: string;
+  monthlyRevenue: {
+    total: number;
+  };
+  unitsSoldThisMonth: number;
 }

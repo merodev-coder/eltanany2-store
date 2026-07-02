@@ -6,16 +6,16 @@ import catchAsync from '../../utils/catchAsync.js';
 
 /**
  * GET /api/v1/admin/products
- * Paginated list of products with search.
+ * Paginated list of products with search and database-aggregated stats.
  */
 export const getProducts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const limit = Math.max(1, parseInt(req.query.limit as string) || 20);
   const skip = (page - 1) * limit;
   const search = req.query.search as string;
   const category = req.query.category as string;
 
-  const filter: Record<string, any> = {};
+  const filter: Record<string, any> = { isPublished: { $ne: false } };
 
   if (search) {
     filter.$or = [
@@ -28,10 +28,49 @@ export const getProducts = catchAsync(async (req: Request, res: Response, next: 
     filter.category = category;
   }
 
-  const [products, total] = await Promise.all([
-    Product.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+  // Aggregate stats from the whole collection (unfiltered for total inventory inventory value, low stock, etc.)
+  const [products, total, statsData] = await Promise.all([
+    Product.find(filter)
+      .select('-description -images') // Exclude description and images to reduce payload size to the minimum
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
     Product.countDocuments(filter),
+    Product.aggregate([
+      {
+        $match: { isPublished: { $ne: false } }
+      },
+      {
+        $group: {
+          _id: null,
+          totalInventoryValue: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ['$stock', 0] },
+                { $ifNull: ['$buyingPrice', { $ifNull: ['$sellingPrice', { $ifNull: ['$price', 0] }] }] }
+              ]
+            }
+          },
+          lowStockCount: {
+            $sum: {
+              $cond: [{ $lte: [{ $ifNull: ['$stock', 0] }, 5] }, 1, 0]
+            }
+          },
+          activeProductsCount: {
+            $sum: {
+              $cond: [{ $gt: [{ $ifNull: ['$stock', 0] }, 0] }, 1, 0]
+            }
+          }
+        }
+      }
+    ])
   ]);
+
+  const stats = statsData[0] || {
+    totalInventoryValue: 0,
+    lowStockCount: 0,
+    activeProductsCount: 0
+  };
 
   res.status(200).json({
     success: true,
@@ -43,6 +82,11 @@ export const getProducts = catchAsync(async (req: Request, res: Response, next: 
         total,
         pages: Math.ceil(total / limit),
       },
+      stats: {
+        totalInventoryValue: stats.totalInventoryValue,
+        lowStockCount: stats.lowStockCount,
+        activeProductsCount: stats.activeProductsCount
+      }
     },
   });
 });
@@ -69,9 +113,21 @@ export const getProductById = catchAsync(async (req: Request, res: Response, nex
  */
 export const createProduct = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const adminId = (req as any).admin?._id;
+  const bodyData = { ...req.body };
+
+  // Enforce pricing defaults for cross-compat
+  if (bodyData.price && !bodyData.sellingPrice) {
+    bodyData.sellingPrice = bodyData.price;
+  }
+  if (!bodyData.buyingPrice) {
+    bodyData.buyingPrice = bodyData.price || bodyData.sellingPrice || 0;
+  }
+  if (bodyData.sellingPrice && !bodyData.price) {
+    bodyData.price = bodyData.sellingPrice;
+  }
 
   const product = await Product.create({
-    ...req.body,
+    ...bodyData,
     createdBy: adminId,
   });
 
@@ -87,9 +143,18 @@ export const createProduct = catchAsync(async (req: Request, res: Response, next
  * Update a product.
  */
 export const updateProduct = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const bodyData = { ...req.body };
+
+  // Sync price details if updated
+  if (bodyData.price && !bodyData.sellingPrice) {
+    bodyData.sellingPrice = bodyData.price;
+  } else if (bodyData.sellingPrice && !bodyData.price) {
+    bodyData.price = bodyData.sellingPrice;
+  }
+
   const product = await Product.findByIdAndUpdate(
     req.params.id,
-    { $set: req.body },
+    { $set: bodyData },
     { new: true, runValidators: true }
   );
 

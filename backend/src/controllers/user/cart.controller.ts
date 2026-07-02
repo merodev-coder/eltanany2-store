@@ -16,8 +16,7 @@ export const getCart = catchAsync(async (req: Request, res: Response, next: Next
     throw new AppError('غير مصرح', 401);
   }
 
-  // Fetch with user email populated for identification
-  const cart = await Cart.findOne({ user: userId }).populate('user', 'name email');
+  const cart = await Cart.findOne({ user: userId });
 
   res.status(200).json({
     success: true,

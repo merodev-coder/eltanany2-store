@@ -1,4 +1,4 @@
-// frontend/src/api/axiosClient.ts
+// frontend/src/api/apiClient.ts
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface ResponseData<T = any> {
@@ -86,6 +86,7 @@ async function request<T = any>(
 export default {
   get: <T = any>(url: string) => request<T>('GET', url),
   post: <T = any>(url: string, body?: any) => request<T>('POST', url, body),
+  put: <T = any>(url: string, body?: any) => request<T>('PUT', url, body),
   patch: <T = any>(url: string, body?: any) => request<T>('PATCH', url, body),
   delete: <T = any>(url: string) => request<T>('DELETE', url),
 };

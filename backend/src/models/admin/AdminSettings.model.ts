@@ -1,52 +1,67 @@
 // backend/src/models/admin/AdminSettings.model.ts
-// Singleton settings model — one document, auto-created on first read.
+import { adminMongoose, adminDb } from '../../config/db.js';
 
-import mongoose, { Schema, Document } from 'mongoose';
-import { adminDb } from '../../config/db.js';
-
-// ── Types ────────────────────────────────────────────────
-export interface IAdminSettings extends Document {
-  _id: mongoose.Types.ObjectId;
+const adminSettingsSchema = new adminMongoose.Schema({
+  storeName: {
+    type: String,
+    default: 'El-Tanany Store',
+  },
+  storeDescription: {
+    type: String,
+  },
+  contactEmail: {
+    type: String,
+  },
+  contactPhone: {
+    type: String,
+  },
+  currency: {
+    type: String,
+    default: 'EGP',
+  },
+  taxRate: {
+    type: Number,
+    default: 0,
+  },
+  shippingFee: {
+    type: Number,
+    default: 0,
+  },
   paymentMethods: {
-    vodafoneCash?: string;
-    instaPay?: string;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// ── Schema ───────────────────────────────────────────────
-const adminSettingsSchema = new Schema<IAdminSettings>(
-  {
-    paymentMethods: {
-      vodafoneCash: {
-        type: String,
-        trim: true,
-        default: '',
-      },
-      instaPay: {
-        type: String,
-        trim: true,
-        default: '',
-      },
+    vodafoneCash: {
+      type: String,
+      default: '',
+    },
+    instaPay: {
+      type: String,
+      default: '',
     },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
-);
+  priceList: {
+    url: {
+      type: String,
+      default: '',
+    },
+    fileName: {
+      type: String,
+      default: '',
+    },
+    uploadedAt: {
+      type: Date,
+    },
+  },
+}, {
+  timestamps: true,
+});
 
-// ── Singleton: getOrCreate ───────────────────────────────
+// Static method to get or create the singleton settings document
 adminSettingsSchema.statics.getOrCreate = async function () {
   let settings = await this.findOne();
   if (!settings) {
-    settings = await this.create({ paymentMethods: {} });
+    settings = await this.create({});
   }
   return settings;
 };
 
-// ── Model ────────────────────────────────────────────────
-const AdminSettings = adminDb.model<IAdminSettings>('AdminSettings', adminSettingsSchema);
-export default AdminSettings;
+// Use defensive pattern to prevent overwrite errors during hot-reload
+export default adminDb.models.AdminSettings || adminDb.model('AdminSettings', adminSettingsSchema);

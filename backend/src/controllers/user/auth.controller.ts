@@ -11,6 +11,7 @@ import {
 import AppError from '../../utils/AppError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import logger from '../../utils/logger.js';
+import sendEmail from '../../utils/sendEmail.js';
 
 // ── Helper: Parse env value (strips surrounding quotes) ──
 function getEnvRaw(key: string): string {
@@ -261,16 +262,32 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response, nex
     });
   }
 
-  // ── Generate 6-digit OTP ────────────────────────────
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // ── Generate secure 6-digit OTP ─────────────────────
+  const otp = crypto.randomInt(100000, 999999).toString();
   const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
 
   user.passwordResetOTP = hashedOTP;
   user.passwordResetOTPExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
   await user.save({ validateBeforeSave: false });
 
-  // ── TODO: Send OTP via email (Nodemailer) ──────
-  // In production, send the OTP via email/SMS
+  // ── Send OTP via email (Nodemailer) ────────────
+  await sendEmail({
+    to: user.email,
+    subject: 'إعادة تعيين كلمة المرور',
+    text: `رمز إعادة تعيين كلمة المرور الخاص بك هو: ${otp}\n\nصالح لمدة 10 دقائق فقط.`,
+    html: `<div dir="rtl" style="font-family: 'Cairo', sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; text-align: right;">
+      <h2 style="color: #E8420C;">إعادة تعيين كلمة المرور</h2>
+      <p>مرحباً ${user.name}،</p>
+      <p>تم طلب إعادة تعيين كلمة المرور لحسابك. استخدم الرمز التالي:</p>
+      <div style="background: #f5f5f5; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0; font-size: 28px; letter-spacing: 8px; font-weight: bold; color: #18181B;">
+        ${otp}
+      </div>
+      <p style="color: #666; font-size: 14px;">صالح لمدة <strong>10 دقائق</strong> فقط.</p>
+      <p style="color: #999; font-size: 12px; margin-top: 20px;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة.</p>
+      <p style="color: #999; font-size: 12px;">El-Tanany Store</p>
+    </div>`,
+  });
+
   // IMPORTANT: Never log the plaintext OTP. Log only the request event.
   logger.info(`Password reset requested for ${email}`);
 

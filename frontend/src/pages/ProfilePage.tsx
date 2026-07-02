@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
   User as UserIcon, ShoppingBag, Lock, Edit3, Loader2, Calendar, Phone
 } from 'lucide-react';
-import axiosClient from '@/api/axiosClient';
+import axiosClient from '@/api/apiClient';
 
 // Types
 interface Order {

@@ -36,7 +36,6 @@ export default function Footer() {
                 { label: 'إكسسوارات', href: '/accessories' },
                 { label: 'عن المتجر', href: '/about' },
                 { label: 'الأسئلة الشائعة', href: '/faq' },
-                { label: 'قائمة الأسعار', href: '/price-list' },
               ].map(link => (
                 <li key={link.href}>
                   <Link to={link.href} className="text-white/60 hover:text-ignition-end transition-colors duration-200 font-body text-sm">

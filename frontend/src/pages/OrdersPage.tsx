@@ -2,36 +2,23 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Package, Truck, Check, X, Clock, AlertCircle } from 'lucide-react';
-import axiosClient from '@/api/axiosClient';
+import {
+  ShoppingBag, Package, Truck, Check, X, Clock, AlertCircle,
+  MapPin, CreditCard, Receipt, Store,
+} from 'lucide-react';
+import axiosClient from '@/api/apiClient';
 import { useAuth } from '@/context/AuthContext';
-
-// ── Types ──────────────────────────────────────────────
-interface BackendOrderItem {
-  name: string;
-  price: number;
-  qty: number;
-  imageUrl: string;
-}
-
-interface BackendOrder {
-  _id: string;
-  items: BackendOrderItem[];
-  subtotal: number;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  receiptVerified: boolean;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Order, OrderStatus } from '@/types';
 
 // ── Status mapping ───────────────────────────────────
-const statusConfig: Record<BackendOrder['status'], { label: string; color: string; icon: typeof Clock }> = {
+const statusConfig: Record<OrderStatus, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: 'قيد الانتظار', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
+  approved: { label: 'تم التأكيد', color: 'bg-sky-100 text-sky-700 border-sky-200', icon: Check },
   confirmed: { label: 'تم التأكيد', color: 'bg-sky-100 text-sky-700 border-sky-200', icon: Check },
   processing: { label: 'يتم التوصيل', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Truck },
   shipped: { label: 'تم الشحن', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Package },
   delivered: { label: 'تم الاستلام', color: 'bg-green-100 text-green-700 border-green-200', icon: Check },
+  rejected: { label: 'مرفوض', color: 'bg-red-100 text-red-700 border-red-200', icon: X },
   cancelled: { label: 'ملغي', color: 'bg-red-100 text-red-700 border-red-200', icon: X },
 };
 
@@ -50,7 +37,7 @@ function formatDate(dateString: string): string {
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuth();
-  const [orders, setOrders] = useState<BackendOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -123,7 +110,7 @@ export default function OrdersPage() {
             animate={{ opacity: 1 }}
             className="text-center py-20"
           >
-            <ShoppingBag className="w-16 h-16 text-zinc-aff/30 text-zinc-700 mx-auto mb-4" />
+            <ShoppingBag className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">لا توجد طلبات</h2>
             <p className="text-zinc-400 mb-4">لم تقم بأي طلبات حتى الآن</p>
             <Link to="/" className="inline-block px-6 py-2 bg-amber-400 text-zinc-950 rounded-xl font-bold hover:bg-amber-300 transition-colors">
@@ -153,7 +140,7 @@ export default function OrdersPage() {
                       <ShoppingBag className="w-5 h-5 text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium text-sm">طلب #{order._id.slice(-8).toUpperCase()}</p>
+                      <p className="text-white font-medium text-sm">طلب #{order.orderNumber || order._id.slice(-8).toUpperCase()}</p>
                       <p className="text-zinc-400 text-xs">{formatDate(order.createdAt)}</p>
                     </div>
                   </div>
@@ -161,6 +148,38 @@ export default function OrdersPage() {
                     <StatusIcon className="w-3.5 h-3.5" />
                     {statusInfo.label}
                   </div>
+                </div>
+
+                {/* Customer Info */}
+                <div className="flex flex-wrap gap-3 mb-3 text-xs text-zinc-400">
+                  {order.customerName && (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                      {order.customerName}
+                    </span>
+                  )}
+                  {order.customerPhone && (
+                    <span className="flex items-center gap-1" dir="ltr">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                      {order.customerPhone}
+                    </span>
+                  )}
+                  {order.deliveryType && (
+                    <span className="flex items-center gap-1">
+                      {order.deliveryType === 'pickup' ? (
+                        <><Store className="w-3 h-3" /> استلام</>
+                      ) : (
+                        <><MapPin className="w-3 h-3" /> شحن</>
+                      )}
+                    </span>
+                  )}
+                  {order.paymentMethod && (
+                    <span className="flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" />
+                      {order.paymentMethod === 'vodafone_cash' ? 'Vodafone Cash' :
+                       order.paymentMethod === 'instapay' ? 'InstaPay' : 'COD'}
+                    </span>
+                  )}
                 </div>
 
                 {/* Items */}
@@ -177,13 +196,25 @@ export default function OrdersPage() {
                         </div>
                         <div>
                           <p className="text-white text-sm font-medium">{item.name}</p>
-                          <p className="text-zinc-400 text-xs">{item.qty} × {formatCurrency(item.price)}</p>
+                          <p className="text-zinc-400 text-xs">{item.quantity} × {formatCurrency(item.price)}</p>
                         </div>
                       </div>
-                      <p className="text-amber-400 text-sm font-medium">{formatCurrency(item.price * item.qty)}</p>
+                      <p className="text-amber-400 text-sm font-medium">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                   ))}
                 </div>
+
+                {/* Receipt Status */}
+                {order.receiptUrl && (
+                  <div className={`flex items-center gap-2 mb-3 text-xs px-3 py-1.5 rounded-lg w-fit ${
+                    order.receiptVerified
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
+                    <Receipt className="w-3.5 h-3.5" />
+                    {order.receiptVerified ? 'تم التحقق من الإيصال' : 'بانتظار التحقق من الإيصال'}
+                  </div>
+                )}
 
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
@@ -191,8 +222,13 @@ export default function OrdersPage() {
                     {order.items.length} {order.items.length === 1 ? 'منتج' : 'منتجات'}
                   </div>
                   <div className="flex items-center gap-2">
+                    {order.shippingCost !== undefined && order.shippingCost > 0 && (
+                      <span className="text-zinc-500 text-xs">
+                        + شحن {formatCurrency(order.shippingCost)}
+                      </span>
+                    )}
                     <span className="text-zinc-400 text-sm">المجموع:</span>
-                    <span className="text-white font-bold text-lg">{formatCurrency(order.subtotal)}</span>
+                    <span className="text-white font-bold text-lg">{formatCurrency(order.totalValue)}</span>
                   </div>
                 </div>
               </motion.div>
