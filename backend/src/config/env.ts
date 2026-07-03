@@ -1,14 +1,11 @@
 // backend/src/config/env.ts
 // Load environment variables FIRST before any other imports
 
-// @ts-ignore — __dirname is a Node.js CJS global; suppress TS compile error
-const __dirname: string = '/';
-
 import dotenv from 'dotenv';
+import path from 'path';
 
-// CJS-safe: __dirname resolves to backend/src/config at runtime.
-// Going up two levels reaches the backend root where .env lives.
-dotenv.config({ path: __dirname + '/../../.env' });
+// __dirname is available globally in CommonJS mode
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Validate required vars
 const required = ['MONGODB_URI', 'JWT_SECRET', 'CLIENT_URL', 'NODE_ENV'];
