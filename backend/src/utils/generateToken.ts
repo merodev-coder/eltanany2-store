@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 import { Response } from 'express';
 
 // ── Constants ─────────────────────────────────────────────
-const ACCESS_MAX_AGE = 4 * 24 * 60 * 60 * 1000;    // 4 days in ms
-const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;  // 30 days in ms
+const ACCESS_MAX_AGE = 4 * 24 * 60 * 60 * 1000; // 4 days in ms
+const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -25,13 +25,17 @@ export function generateUserTokens(userId: string) {
   const userPayload = { userId };
   const userRefreshPayload = { sub: userId, type: 'user_refresh' };
 
-  const accessToken = jwt.sign(userPayload, process.env.USER_JWT_SECRET!, {
-    expiresIn: (process.env.USER_JWT_EXPIRES_IN || '4d') as jwt.StringValue,
-  });
+  const accessToken = jwt.sign(
+    userPayload,
+    process.env.USER_JWT_SECRET!,
+    { expiresIn: '4d' } as jwt.SignOptions,
+  );
 
-  const refreshToken = jwt.sign(userRefreshPayload, process.env.USER_REFRESH_SECRET!, {
-    expiresIn: (process.env.USER_REFRESH_EXPIRES_IN || '30d') as jwt.StringValue,
-  });
+  const refreshToken = jwt.sign(
+    userRefreshPayload,
+    process.env.USER_JWT_REFRESH_SECRET!,
+    { expiresIn: '30d' } as jwt.SignOptions,
+  );
 
   return { accessToken, refreshToken };
 }
@@ -41,13 +45,17 @@ export function generateAdminTokens(adminId: string) {
   const adminPayload = { adminId };
   const adminRefreshPayload = { sub: adminId, type: 'admin_refresh' };
 
-  const accessToken = jwt.sign(adminPayload, process.env.ADMIN_JWT_SECRET!, {
-    expiresIn: (process.env.ADMIN_JWT_EXPIRES_IN || '4d') as jwt.StringValue,
-  });
+  const accessToken = jwt.sign(
+    adminPayload,
+    process.env.ADMIN_JWT_SECRET!,
+    { expiresIn: '4d' } as jwt.SignOptions,
+  );
 
-  const refreshToken = jwt.sign(adminRefreshPayload, process.env.ADMIN_REFRESH_SECRET!, {
-    expiresIn: (process.env.ADMIN_REFRESH_EXPIRES_IN || '30d') as jwt.StringValue,
-  });
+  const refreshToken = jwt.sign(
+    adminRefreshPayload,
+    process.env.ADMIN_JWT_REFRESH_SECRET!,
+    { expiresIn: '30d' } as jwt.SignOptions,
+  );
 
   return { accessToken, refreshToken };
 }

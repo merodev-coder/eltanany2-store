@@ -29,3 +29,7 @@ export const updatePriceListSchema = z.object({
     fileName: z.string().min(1, 'اسم الملف مطلوب').max(200, 'اسم الملف طويل جداً'),
   }),
 });
+
+// ── Admin: DELETE /price-list ────────────────────────────────────────────
+// No body — the action unconditionally clears the price-list fields.
+export const clearPriceListSchema = z.object({});

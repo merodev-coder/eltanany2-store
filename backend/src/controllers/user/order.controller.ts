@@ -4,7 +4,7 @@ import Order from '../../models/user/Order.model.js';
 import Product from '../../models/admin/Product.model.js';
 import AppError from '../../utils/AppError.js';
 import catchAsync from '../../utils/catchAsync.js';
-import { receiptMongoose } from '../../config/db.js';
+import { userMongoose } from '../../config/db.js';
 
 /**
  * POST /api/v1/users/orders
@@ -70,7 +70,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response, next: 
     totalCost += costPrice * qty;
 
     orderItems.push({
-      product: new receiptMongoose.Types.ObjectId(item.productId),
+      product: new userMongoose.Types.ObjectId(item.productId),
       name: item.name || product.name,
       price,
       quantity: qty,

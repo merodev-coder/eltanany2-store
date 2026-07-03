@@ -32,7 +32,7 @@ export const adminLogin = catchAsync(async (req: Request, res: Response, next: N
     }
 
     // ── Verify password ─────────────────────────────────
-    const isMatch = await admin.comparePassword(password);
+    const isMatch = await (admin as any).comparePassword(password);
     if (!isMatch) {
       throw new AppError('Invalid credentials.', 401);
     }

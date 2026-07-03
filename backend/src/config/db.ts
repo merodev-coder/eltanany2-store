@@ -37,7 +37,7 @@ function getOrCreateConnection(
     return connectionCache.get(envVarName)!;
   }
 
-  const MONGO_URI = process.env[envVarName];
+  const MONGO_URI = process.env[envVarName]!;
 
   if (!MONGO_URI) {
     logger.error(`❌ ${envVarName} is not set in environment`);
@@ -103,8 +103,6 @@ function getOrCreateConnection(
 // ── Public exports: one singleton per database ─────────────
 const adminDbResult = getOrCreateConnection('ADMIN_DB_URI', 'Admin DB');
 const userDbResult = getOrCreateConnection('USER_DB_URI', 'User DB');
-const productDbResult = getOrCreateConnection('PRODUCT_DB_URI', 'Product DB');
-const receiptDbResult = getOrCreateConnection('RECEIPT_DB_URI', 'Receipt DB');
 
 // Export the mongoose instances (for creating schemas) and connections (for registering models)
 export const adminMongoose = adminDbResult.mongoose;
@@ -112,9 +110,3 @@ export const adminDb = adminDbResult.connection;
 
 export const userMongoose = userDbResult.mongoose;
 export const userDb = userDbResult.connection;
-
-export const productMongoose = productDbResult.mongoose;
-export const productDb = productDbResult.connection;
-
-export const receiptMongoose = receiptDbResult.mongoose;
-export const receiptDb = receiptDbResult.connection;

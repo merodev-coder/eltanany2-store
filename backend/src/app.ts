@@ -3,27 +3,25 @@
 import './config/env.js';
 
 import express from 'express';
-import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 
-// Import the centralized DB module once — this triggers all 4 connections in parallel
+// Centralized DB module — triggers all connections in parallel
 import './config/db.js';
 
 // ── MODEL REGISTRATION (must be BEFORE routes) ───────────────
-// Routes import controllers. Controllers import models. If a model file
-// hasn't been evaluated yet, its schema won't be registered on the
-// correct mongoose connection, and any call to mongoose.model() or
-// connection.model() will fail with "Schema hasn't been registered".
-// Importing models here guarantees they register before any route
-// or controller is loaded.
+// Routes import controllers. Controllers import models. Importing models
+// here guarantees their schemas register on the correct mongoose connection
+// before any route or controller is loaded.
 import './models/user/User.model.js';
 import './models/user/Cart.model.js';
 import './models/user/Order.model.js';
-import './models/admin/Product.model.js';
 import './models/admin/Admin.model.js';
 import './models/admin/AdminSettings.model.js';
 import './models/admin/Governorate.model.js';
+import './models/admin/Product.model.js';
+import './models/admin/PriceList.model.js';
 
 // Import routes (AFTER models are registered)
 import userAuthRoutes from './routes/user/auth.routes.js';
@@ -33,13 +31,14 @@ import userProfileRoutes from './routes/user/profile.routes.js';
 import userReceiptRoutes from './routes/user/receipt.routes.js';
 import adminAuthRoutes from './routes/admin/auth.routes.js';
 import adminProductRoutes from './routes/admin/product.routes.js';
-import adminOrderRoutes from './routes/admin/order.routes.js';
+import adminOrderRoutes from './routes/admin/orders.routes.js';
 import adminGovernorateRoutes from './routes/admin/governorate.routes.js';
 import adminSettingsRoutes from './routes/admin/settings.routes.js';
 import adminAnalyticsRoutes from './routes/admin/analytics.routes.js';
 import publicProductRoutes from './routes/public/product.routes.js';
 import publicGovernorateRoutes from './routes/public/governorate.routes.js';
 import publicSettingsRoutes from './routes/public/settings.routes.js';
+import publicPriceListRoutes from './routes/public/priceList.routes.js';
 
 // Import middleware
 import errorHandler from './middleware/errorHandler.js';
@@ -54,11 +53,8 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── CORS ───────────────────────────────────────────────────
-// Allow all origins for development
-app.use(cors({
-  origin: true,
-  credentials: true,
-}));
+// Allow all origins for development (localhost:5173 frontend)
+app.use(cors({ origin: true, credentials: true }));
 
 // ── Body parsing ────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -93,6 +89,7 @@ app.use(
 app.use('/api/v1/public/products', publicProductRoutes);
 app.use('/api/v1/public/governorates', publicGovernorateRoutes);
 app.use('/api/v1/public/settings', publicSettingsRoutes);
+app.use('/api/v1/public/price-list', publicPriceListRoutes);
 
 // User routes
 app.use('/api/v1/users/auth', userAuthRoutes);

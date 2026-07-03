@@ -4,9 +4,20 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import {
-  User as UserIcon, ShoppingBag, Lock, Edit3, Loader2, Calendar, Phone
+  User as UserIcon,
+  ShoppingBag,
+  Lock,
+  Edit3,
+  Loader2,
+  Calendar,
+  Phone,
+  FileText,
+  Upload,
+  CheckCircle,
 } from 'lucide-react';
 import axiosClient from '@/api/apiClient';
+import { UploadButton } from '@/components/ui/uploadthing';
+import { toast } from 'sonner';
 
 // Types
 interface Order {
@@ -17,6 +28,9 @@ interface Order {
   createdAt: string;
 }
 
+// Default admin email — only this user sees the .docx upload box
+const DEFAULT_ADMIN_EMAIL = 'admin@eltanany.com';
+
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: 'bg-yellow-500/20 text-yellow-400',
@@ -26,17 +40,9 @@ function StatusBadge({ status }: { status: string }) {
     delivered: 'bg-green-500/20 text-green-400',
     cancelled: 'bg-red-500/20 text-red-400',
   };
-  const labels: Record<string, string> = {
-    pending: 'انتظار',
-    confirmed: 'مؤكد',
-    processing: 'جاري',
-    shipped: 'شحن',
-    delivered: 'تسليم',
-    cancelled: 'ملغي',
-  };
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-zinc-500/20 text-zinc-400'}`}>
-      {labels[status] || status}
+      {status}
     </span>
   );
 }
@@ -49,6 +55,10 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const isDefaultAdmin = user?.email === DEFAULT_ADMIN_EMAIL;
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -69,11 +79,35 @@ export default function ProfilePage() {
     try {
       await axiosClient.patch('/users/profile/me', { name: editName, phone: editPhone });
       setEditing(false);
+      toast.success('تم حفظ التعديلات');
     } catch {
-      // handle error
+      toast.error('فشل حفظ التعديلات');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleUploadComplete = async (res: Array<{ url: string; name: string }>) => {
+  if (res?.[0]?.url && res?.[0]?.name) {
+    const fileUrl = res[0].url;
+    const fileName = res[0].name;
+    setUploadedFile({ url: fileUrl, name: fileName });
+    toast.success('تم رفع الملف بنجاح!');
+    try {
+      await axiosClient.post('/admin/settings/price-list', { url: fileUrl, fileName });
+      toast.success('تم حفظ قائمة الأسعار بنجاح');
+    } catch {
+      toast.error('تم الرفع لكن فشل حفظ البيانات — حاول مرة أخرى');
+    }
+  } else {
+    toast.error('حدث خطأ أثناء معالجة الملف');
+  }
+  setIsUploading(false);
+};
+
+  const handleUploadError = (error: Error) => {
+    toast.error('فشل الرفع: ' + error.message);
+    setIsUploading(false);
   };
 
   if (!user) return null;
@@ -134,7 +168,11 @@ export default function ProfilePage() {
           <div className="md:col-span-2 space-y-6">
             {/* Edit Form */}
             {editing && (
-              <div className="bg-zinc-900 border border-zinc-800/60 rounded-2xl p-6">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-zinc-800/60 rounded-2xl p-6"
+              >
                 <h3 className="text-lg font-bold text-white mb-4">تعديل الملف الشخصي</h3>
                 <div className="space-y-4">
                   <div>
@@ -172,6 +210,66 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Admin-only .docx upload box */}
+            {isDefaultAdmin && (
+              <div className="bg-zinc-900 border border-zinc-800/60 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-lg font-bold text-white">رفع ملف .docx</h3>
+                </div>
+                <p className="text-zinc-400 text-sm mb-4">
+                  ارفع ملف Word (.docx) هنا 
+                </p>
+
+                {uploadedFile && (
+                  <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-green-400 font-medium truncate">{uploadedFile.name}</p>
+                      <a
+                        href={uploadedFile.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-green-400/70 hover:text-green-400 underline"
+                      >
+                        فتح الرابط
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                <UploadButton
+                  endpoint="docxUploader"
+                  onClientUploadComplete={handleUploadComplete}
+                  onUploadError={handleUploadError}
+                  onUploadBegin={() => setIsUploading(true)}
+                  appearance={{
+                    button: 'w-full h-32 rounded-xl border-2 border-dashed border-zinc-700 hover:border-amber-400 transition-colors flex flex-col items-center justify-center gap-2 bg-transparent text-zinc-400',
+                    allowedContent: 'text-xs text-zinc-600',
+                  }}
+                  content={{
+                    button({ isUploading }: { isUploading: boolean }) {
+                      if (isUploading) {
+                        return (
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                            <span className="text-sm">جاري الرفع…</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="w-8 h-8" />
+                          <span className="text-sm font-medium">اضغط لرفع ملف .docx</span>
+                          <span className="text-xs text-zinc-600">حد أقصى 16 ميجابايت</span>
+                        </div>
+                      );
+                    },
+                  }}
+                />
               </div>
             )}
 

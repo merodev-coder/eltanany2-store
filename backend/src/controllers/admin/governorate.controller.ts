@@ -67,7 +67,7 @@ export const updateGovernorate = catchAsync(async (req: Request, res: Response, 
   }
 
   if (shippingFee !== undefined) governorate.shippingFee = shippingFee;
-  if (active !== undefined) governorate.active = active;
+  if ('active' in req.body) governorate.isActive = req.body.active;
   if (cities !== undefined) governorate.cities = cities;
   if (carrierId !== undefined) governorate.carrierId = carrierId;
 

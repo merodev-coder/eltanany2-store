@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { PlusCircle, Package, Truck, ShoppingBag, Settings, BarChart3, FileText } from 'lucide-react';
+import { PlusCircle, Package, Truck, ShoppingBag, BarChart3 } from 'lucide-react';
 
-export type AdminTab = 'orders' | 'add-product' | 'inventory' | 'delivery' | 'analytics' | 'price-list' | 'settings';
+export type AdminTab = 'orders' | 'add-product' | 'inventory' | 'delivery' | 'analytics';
 
 const navItems: { id: AdminTab; label: string; icon: any; path: string }[] = [
   { id: 'orders', label: 'إدارة الطلبات', icon: ShoppingBag, path: '/AhmedEltanany/dashboard/orders' },
@@ -9,8 +9,6 @@ const navItems: { id: AdminTab; label: string; icon: any; path: string }[] = [
   { id: 'inventory', label: 'الجرد والإحصائيات', icon: Package, path: '/AhmedEltanany/dashboard/inventory' },
   { id: 'analytics', label: 'التحليلات والأرباح', icon: BarChart3, path: '/AhmedEltanany/dashboard/analytics' },
   { id: 'delivery', label: 'خيارات التوصيل', icon: Truck, path: '/AhmedEltanany/dashboard/delivery' },
-  { id: 'price-list', label: 'إدارة قائمة الأسعار', icon: FileText, path: '/AhmedEltanany/dashboard/price-list' },
-  { id: 'settings', label: 'إعدادات الدفع', icon: Settings, path: '/AhmedEltanany/dashboard/settings' },
 ];
 
 export default function AdminSidebar() {

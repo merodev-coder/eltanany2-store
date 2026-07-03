@@ -109,7 +109,7 @@ export const syncGuestCart = catchAsync(async (req: Request, res: Response, next
     const mergedItems = [...existingCart.items];
     for (const guestItem of items) {
       const existingIndex = mergedItems.findIndex(
-        (item) => item.productId === guestItem.productId && item.color === guestItem.color
+        (item) => String(item.product) === String(guestItem.productId) && item.color === guestItem.color
       );
       if (existingIndex >= 0) {
         mergedItems[existingIndex].qty += guestItem.qty;
@@ -118,7 +118,7 @@ export const syncGuestCart = catchAsync(async (req: Request, res: Response, next
       }
     }
 
-    existingCart.items = mergedItems;
+    existingCart.items = mergedItems as any;
     existingCart.userEmail = userEmail || existingCart.userEmail;
     await existingCart.save();
 

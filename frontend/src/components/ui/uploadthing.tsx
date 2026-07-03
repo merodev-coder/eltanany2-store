@@ -1,5 +1,6 @@
 // frontend/src/components/ui/uploadthing.tsx
-import { generateUploadButton, generateUploadDropzone } from "@uploadthing/react";
+import { generateUploadButton, generateUploadDropzone, type UploadDropzoneProps } from "@uploadthing/react";
+export type { UploadDropzoneProps };
 
 // ── Shared UploadThing API endpoint ────────────────────────────────────────
 const UPLOADTHING_URL =
@@ -18,9 +19,13 @@ export const UploadButton = generateUploadButton({
 export const UploadDropzone = generateUploadDropzone({
   url: `${UPLOADTHING_URL}/api/uploadthing`,
   config: {
-    // The .docx MIME type from uploadthing's allowed-types.
-    // The actual MIME check is enforced server-side in uploadthing.ts;
-    // this is a client-side hint only.
+    // Image MIME type for product image uploads (server-side validation
+    // in uploadthing.ts enforces endpoint constraints; this is a client-side hint)
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 6,
+    },
+    // The .docx MIME type for price list uploads
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
       maxFileSize: "16MB",
       maxFileCount: 1,

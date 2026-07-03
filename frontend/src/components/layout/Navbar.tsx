@@ -72,8 +72,8 @@ export default function Navbar() {
     { label: 'الرئيسية', href: '/' },
     { label: 'لابتوبات', href: '/laptops' },
     { label: 'إكسسوارات', href: '/accessories' },
-    { label: 'قائمة الأسعار', href: '/price-list' },
     { label: 'تواصل معنا', href: '/contact' },
+    { label: 'قائمة الأسعار', href: '/pricelist' },,
   ];
 
   // Truncate name for display

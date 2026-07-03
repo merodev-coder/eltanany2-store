@@ -1,9 +1,9 @@
 // backend/src/models/user/Order.model.ts
-import { receiptMongoose, receiptDb } from '../../config/db.js';
+import { userMongoose, userDb } from '../../config/db.js';
 
-const orderItemSchema = new receiptMongoose.Schema({
+const orderItemSchema = new userMongoose.Schema({
   product: {
-    type: receiptMongoose.Schema.Types.ObjectId,
+    type: userMongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true,
   },
@@ -14,9 +14,9 @@ const orderItemSchema = new receiptMongoose.Schema({
   color: { type: String },
 }, { _id: false });
 
-const orderSchema = new receiptMongoose.Schema({
+const orderSchema = new userMongoose.Schema({
   user: {
-    type: receiptMongoose.Schema.Types.ObjectId,
+    type: userMongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     index: true,
@@ -102,13 +102,20 @@ const orderSchema = new receiptMongoose.Schema({
   timestamps: true,
 });
 
+// Compound index for common "unfulfilled orders" queries by the admin
+orderSchema.index({ status: 1, createdAt: -1 });
+
+// TTL index: MongoDB automatically removes the document 15 days after creation
+// NOTE: TTL requires a single-field index on a date — this only fires on `createdAt`
+// so any document where only `updatedAt` changes will NOT be inadvertently removed.
+orderSchema.index({ createdAt: 1 }, { expireAfterSeconds: 15 * 24 * 60 * 60 });
+
 // Auto-generate order number before saving
-// Use receiptDb.model('Order') — the same connection this schema is registered on
 orderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {
     const date = new Date();
     const prefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-    const count = await receiptDb.model('Order').countDocuments({
+    const count = await userDb.models.Order.countDocuments({
       createdAt: { $gte: new Date(date.getFullYear(), date.getMonth(), date.getDate()) },
     });
     this.orderNumber = `${prefix}-${String(count + 1).padStart(4, '0')}`;
@@ -116,7 +123,6 @@ orderSchema.pre('save', async function (next) {
   next();
 });
 
-// Export the model registered on receiptDb (the correct connection for orders)
-// Use defensive pattern to prevent overwrite errors during hot-reload.
-const Order = receiptDb.models.Order || receiptDb.model('Order', orderSchema);
+// Register the model on userDb (the correct connection for orders)
+const Order = userDb.models.Order || userDb.model('Order', orderSchema);
 export default Order;

@@ -28,10 +28,13 @@ export function clearAuthState() {
   localStorage.removeItem('admin_auth_state');
 }
 
+// 10-second ceiling so a dead backend never freezes the admin UI
+const REQUEST_TIMEOUT_MS = 10_000;
+
 async function request<T = any>(
   method: string,
   url: string,
-  body?: any
+  body?: any,
 ): Promise<ResponseData<T>> {
   // Gate /auth/me calls to prevent 401 errors
   const isAuthMe = url.endsWith('/auth/me') || url.endsWith('/me');
@@ -65,22 +68,48 @@ async function request<T = any>(
 
   const fetchUrl = url.startsWith('http') ? url : `${API_BASE}/api/v1${url}`;
 
-  const response = await fetch(fetchUrl, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include',
-  });
+  // AbortController-based timeout — kills the fetch after 10 s so the UI
+  // never hangs on a dead / slow backend (e.g. MongoDB query that never resolves).
+  const ac = new AbortController();
+  const killTimer = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
 
-  const data = await response.json().catch(() => ({}));
+  let response: Response;
+  try {
+    response = await fetch(fetchUrl, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
+      signal: ac.signal,
+    });
 
-  if (!response.ok) {
-    const err: any = new Error(data.message || 'Request failed');
-    err.response = { data, status: response.status };
+    clearTimeout(killTimer);
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const err: any = new Error(data.message || 'Request failed');
+      err.response = { data, status: response.status };
+      throw err;
+    }
+
+    return { data, status: response.status, statusText: response.statusText };
+  } catch (err: any) {
+    clearTimeout(killTimer);
+
+    // AbortError means the timeout fired — surface as 408 so the UI can show
+    // a real message instead of spinning forever.
+    if (err.name === 'AbortError') {
+      const timeoutErr: any = new Error('انتهت مهلة الاتصال بالخادم — تحقق من أن الباك إند يعمل');
+      timeoutErr.response = {
+        data: { message: 'انتهت مهلة الاتصال بالخادم — تحقق من أن الباك إند يعمل' },
+        status: 408,
+      };
+      throw timeoutErr;
+    }
+
     throw err;
   }
-
-  return { data, status: response.status, statusText: response.statusText };
 }
 
 export default {

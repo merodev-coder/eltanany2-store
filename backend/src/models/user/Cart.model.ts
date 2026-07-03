@@ -8,21 +8,24 @@ const cartSchema = new userMongoose.Schema({
     required: true,
     unique: true,
   },
+  userEmail: {
+    type: String,
+    required: true,
+  },
   items: [{
     product: {
       type: userMongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
     },
-    quantity: {
+    color: { type: String },
+    qty: {
       type: Number,
       required: true,
       min: 1,
       default: 1,
     },
   }],
-}, {
-  timestamps: true,
-});
+}, { timestamps: true });
 
 export default userDb.model('Cart', cartSchema);

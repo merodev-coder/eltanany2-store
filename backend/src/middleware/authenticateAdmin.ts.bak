@@ -23,20 +23,25 @@ function authenticateAdmin(requiredPermission?: string) {
       const accessToken = req.cookies?.admin_access;
 
       if (!accessToken) {
-        // ── Fallback: accept valid user_access token as superadmin ──
-        // No DB call — avoids hanging when User DB is unreachable
+        // ── Fallback: check user_access for default admin ──
         const userAccessToken = req.cookies?.user_access;
         if (userAccessToken) {
           try {
-            jwt.verify(userAccessToken, process.env.USER_JWT_SECRET!);
-            (req as any).admin = {
-              _id: 'superadmin-fallback',
-              name: 'Super Admin',
-              email: (process.env.DEFAULT_ADMIN_EMAIL || 'admin@eltanany.com').replace(/^["']|["']$/g, ''),
-              role: 'superadmin',
-              permissions: [],
-            };
-            return next();
+            const userDecoded = jwt.verify(userAccessToken, process.env.USER_JWT_SECRET!) as { userId: string };
+            const user = await User.findById(userDecoded.userId);
+            if (user) {
+              const rawAdminEmail = (process.env.DEFAULT_ADMIN_EMAIL || '').replace(/^["']|["']$/g, '').trim().toLowerCase();
+              if (user.email.toLowerCase() === rawAdminEmail) {
+                (req as any).admin = {
+                  _id: user._id,
+                  name: user.name,
+                  email: user.email,
+                  role: 'admin',
+                  hasPermission: () => true,
+                };
+                return next();
+              }
+            }
           } catch { /* not a valid user_access */ }
         }
         throw new AppError('يجب تسجيل الدخول كمشرف أولاً', 401);
@@ -107,8 +112,7 @@ function authenticateAdmin(requiredPermission?: string) {
       }
 
       // ── 5. Check permission (if specified) ──────────────
-      // hasPermission is a schema method; cast to any for TS compatibility
-      if (requiredPermission && !(admin as any).hasPermission(requiredPermission)) {
+      if (requiredPermission && (admin as any).hasPermission(requiredPermission)) {
         throw new AppError('لا تملك الصلاحية اللازمة', 403);
       }
 

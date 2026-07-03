@@ -4,6 +4,16 @@
 // so every consumer imports from a single source of truth.
 
 // ────────────────────────────────────────────────────────────
+// UploadThing
+// ────────────────────────────────────────────────────────────
+/** Result object returned by UploadThing's onClientUploadComplete callback. */
+export interface UTUploadResult {
+url: string;
+name: string;
+size?: number;
+}
+
+// ────────────────────────────────────────────────────────────
 // Product
 // ────────────────────────────────────────────────────────────
 export interface Product {

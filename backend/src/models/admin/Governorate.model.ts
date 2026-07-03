@@ -4,13 +4,13 @@ import { adminMongoose, adminDb } from '../../config/db.js';
 const governorateSchema = new adminMongoose.Schema({
   name: {
     type: String,
-    required: [true, 'اسم المحافظة مطلوب'],
+    required: true,
     trim: true,
     unique: true,
   },
   shippingFee: {
     type: Number,
-    required: [true, 'رسوم الشحن مطلوبة'],
+    required: true,
     min: 0,
     default: 0,
   },
@@ -18,8 +18,8 @@ const governorateSchema = new adminMongoose.Schema({
     type: Boolean,
     default: true,
   },
-}, {
-  timestamps: true,
-});
+  cities: [{ type: String }],
+  carrierId: { type: String, default: '' },
+}, { timestamps: true });
 
 export default adminDb.model('Governorate', governorateSchema);

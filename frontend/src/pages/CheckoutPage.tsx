@@ -18,6 +18,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
+  CheckCircle2,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -27,7 +28,11 @@ import axiosClient from '@/api/apiClient';
 import type { Governorate } from '@/types';
 import { UploadButton } from '@/components/ui/uploadthing';
 
-// ── Steps ─────────────────────────────────────────────
+// ── Hardcoded payment details (edit these directly) ────────────────────────
+const HARDCODED_VODAFONE_NUMBER = '01000000000';
+const HARDCODED_INSTAPAY_ACCOUNT = '@eltanany_store';
+
+// ── Steps ──────────────────────────────────────────────────────────────────
 const STEPS = [
   { id: 1, label: 'بيانات العميل' },
   { id: 2, label: 'التوصيل والدفع' },
@@ -43,7 +48,6 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [governorates, setGovernorates] = useState<Governorate[]>([]);
-  const [paymentSettings, setPaymentSettings] = useState<{ vodafoneCashNumber: string; instaPayAccount: string }>({ vodafoneCashNumber: '', instaPayAccount: '' });
   const [settingsLoading, setSettingsLoading] = useState(true);
 
   // Step 1: Customer Info
@@ -61,28 +65,14 @@ export default function CheckoutPage() {
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
-  // Fetch governorates and payment settings on mount
+  // Fetch governorates on mount (no settings fetch needed anymore)
   useEffect(() => {
     const load = async () => {
       try {
-        const [govs, settingsRes] = await Promise.all([
-          getGovernorates(),
-          axiosClient.get('/public/settings'),
-        ]);
+        const govs = await getGovernorates();
         setGovernorates(govs);
-        if (settingsRes.data.success && settingsRes.data.data) {
-          setPaymentSettings({
-            vodafoneCashNumber: settingsRes.data.data.vodafoneCashNumber || '01000000000',
-            instaPayAccount: settingsRes.data.data.instaPayAccount || '@username',
-          });
-        }
       } catch (err) {
-        console.warn('Failed to load checkout data:', err);
-        // Set fallback values
-        setPaymentSettings({
-          vodafoneCashNumber: '01000000000',
-          instaPayAccount: '@username',
-        });
+        console.warn('Failed to load governorates:', err);
       } finally {
         setSettingsLoading(false);
       }
@@ -98,19 +88,19 @@ export default function CheckoutPage() {
 
   const finalTotal = totalPrice + shippingCost;
 
-  // ── Validation ────────────────────────────────────────
+  // ── Validation ──────────────────────────────────────────────────────────
   const canProceedStep1 =
-    customerInfo.name.trim().length >= 2 &&
-    customerInfo.phone.trim().length >= 8;
+    customerInfo.name.trim().length >= 2 && customerInfo.phone.trim().length >= 8;
 
   const canProceedStep2 =
     deliveryType === 'pickup' || (deliveryType === 'shipping' && selectedGovernorate !== '');
 
-  const canSubmit = deliveryType === 'pickup'
-    ? canProceedStep1 && canProceedStep2
-    : canProceedStep1 && canProceedStep2 && receiptUrl !== null;
+  const canSubmit =
+    deliveryType === 'pickup'
+      ? canProceedStep1 && canProceedStep2
+      : canProceedStep1 && canProceedStep2 && receiptUrl !== null;
 
-  // ── Handlers ─────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────
   const handleUploadComplete = (res: any) => {
     const uploadedFile = res[0];
     if (uploadedFile?.ufsUrl) {
@@ -143,14 +133,16 @@ export default function CheckoutPage() {
         paymentMethod: deliveryType === 'pickup' ? null : paymentMethod,
         subtotal: String(totalPrice),
         receiptUrl: deliveryType === 'pickup' ? null : receiptUrl,
-        items: JSON.stringify(items.map((item) => ({
-          productId: item.product._id,
-          name: item.product.name,
-          price: item.product.price,
-          qty: item.quantity,
-          imageUrl: item.product.images[0] || '',
-          color: item.color,
-        }))),
+        items: JSON.stringify(
+          items.map((item) => ({
+            productId: item.product._id,
+            name: item.product.name,
+            price: item.product.price,
+            qty: item.quantity,
+            imageUrl: item.product.images[0] || '',
+            color: item.color,
+          })),
+        ),
       };
 
       const response = await axiosClient.post('/users/orders', orderData);
@@ -168,7 +160,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // ── Empty Cart ───────────────────────────────────────
+  // ── Empty Cart ─────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -190,7 +182,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // ── Step Indicator ───────────────────────────────────
+  // ── Step Indicator ─────────────────────────────────────────────────────
   const StepIndicator = () => (
     <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
       {STEPS.map((s, idx) => (
@@ -198,26 +190,20 @@ export default function CheckoutPage() {
           <div className="flex flex-col items-center">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-heading font-bold text-sm transition-all duration-300 ${
-                step >= s.id
-                  ? 'gradient-brand text-white shadow-glow'
-                  : 'bg-steel-light text-slate'
+                step >= s.id ? 'gradient-brand text-white shadow-glow' : 'bg-steel-light text-slate'
               }`}
             >
               {step > s.id ? <CheckCircle className="w-5 h-5" /> : s.id}
             </div>
             <span
-              className={`text-xs font-body mt-1.5 hidden sm:block ${
-                step >= s.id ? 'text-ink font-medium' : 'text-slate'
-              }`}
+              className={`text-xs font-body mt-1.5 hidden sm:block ${step >= s.id ? 'text-ink font-medium' : 'text-slate'}`}
             >
               {s.label}
             </span>
           </div>
           {idx < STEPS.length - 1 && (
             <div
-              className={`w-8 sm:w-16 h-0.5 rounded-full transition-colors duration-300 ${
-                step > s.id ? 'bg-ignition-start' : 'bg-steel-light'
-              }`}
+              className={`w-8 sm:w-16 h-0.5 rounded-full transition-colors duration-300 ${step > s.id ? 'bg-ignition-start' : 'bg-steel-light'}`}
             />
           )}
         </div>
@@ -361,9 +347,7 @@ export default function CheckoutPage() {
                       >
                         <div className="flex items-center gap-3 mb-2">
                           <Truck
-                            className={`w-5 h-5 ${
-                              deliveryType === 'shipping' ? 'text-ignition-start' : 'text-slate'
-                            }`}
+                            className={`w-5 h-5 ${deliveryType === 'shipping' ? 'text-ignition-start' : 'text-slate'}`}
                           />
                           <span className="font-heading font-bold text-ink">شحن للمحافظة</span>
                         </div>
@@ -382,9 +366,7 @@ export default function CheckoutPage() {
                       >
                         <div className="flex items-center gap-3 mb-2">
                           <Store
-                            className={`w-5 h-5 ${
-                              deliveryType === 'pickup' ? 'text-ignition-start' : 'text-slate'
-                            }`}
+                            className={`w-5 h-5 ${deliveryType === 'pickup' ? 'text-ignition-start' : 'text-slate'}`}
                           />
                           <span className="font-heading font-bold text-ink">استلام من الفرع</span>
                         </div>
@@ -468,21 +450,25 @@ export default function CheckoutPage() {
                         </button>
                       </div>
 
-                      {/* Payment Details */}
+                      {/* Payment Details - HARDCODED */}
                       <div className="bg-steel-light/50 rounded-xl p-4">
                         {paymentMethod === 'vodafone_cash' && (
                           <div>
-                            <p className="font-body text-sm text-slate mb-1">رقم Vodafone Cash للتحويل:</p>
-                            <p className="font-heading font-bold text-ink text-lg dir-ltr" dir="ltr">
-                              {paymentSettings.vodafoneCashNumber}
+                            <p className="font-body text-sm text-slate mb-1">
+                              رقم Vodafone Cash للتحويل:
+                            </p>
+                            <p className="font-heading font-bold text-ink text-lg" dir="ltr">
+                              {HARDCODED_VODAFONE_NUMBER}
                             </p>
                           </div>
                         )}
                         {paymentMethod === 'instapay' && (
                           <div>
-                            <p className="font-body text-sm text-slate mb-1">عنوان InstaPay للتحويل:</p>
-                            <p className="font-heading font-bold text-ink text-lg dir-ltr" dir="ltr">
-                              {paymentSettings.instaPayAccount}
+                            <p className="font-body text-sm text-slate mb-1">
+                              عنوان InstaPay للتحويل:
+                            </p>
+                            <p className="font-heading font-bold text-ink text-lg" dir="ltr">
+                              {HARDCODED_INSTAPAY_ACCOUNT}
                             </p>
                           </div>
                         )}
@@ -500,8 +486,8 @@ export default function CheckoutPage() {
                             onClientUploadComplete={handleUploadComplete}
                             onUploadError={handleUploadError}
                             appearance={{
-                              button: "w-full h-32 rounded-xl border-2 border-dashed border-steel-light hover:border-ignition-start transition-colors flex flex-col items-center justify-center gap-2 bg-transparent",
-                              allowedContent: "text-xs text-slate/60",
+                              button: 'w-full h-32 rounded-xl border-2 border-dashed border-steel-light hover:border-ignition-start transition-colors flex flex-col items-center justify-center gap-2 bg-transparent',
+                              allowedContent: 'text-xs text-slate/60',
                             }}
                             content={{
                               button({ isUploading }: { isUploading: boolean }) {
@@ -516,7 +502,7 @@ export default function CheckoutPage() {
                                 return (
                                   <div className="flex flex-col items-center gap-2">
                                     <Upload className="w-8 h-8 text-slate" />
-                                    <span className="font-body text-sm text-sl">
+                                    <span className="font-body text-sm text-slate">
                                       اضغط لرفع صورة إيصال التحويل
                                     </span>
                                     <span className="text-xs text-slate/60">PNG, JPG حتى 4MB</span>
@@ -526,10 +512,18 @@ export default function CheckoutPage() {
                             }}
                           />
                         ) : (
-                          <div className="relative rounded-xl overflow-hidden border border-steel-light">
+                          <motion.div
+ initial={{ opacity: 0, scale: 0.95 }}
+ animate={{ opacity: 1, scale: 1 }}
+ className="relative rounded-xl overflow-hidden border-2 border-ignition-start/30"
+ >
+ <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ignition-start text-white font-body text-xs font-bold shadow-lg z-10">
+ <CheckCircle2 className="w-3.5 h-3.5" />
+ تم الرفع بنجاح
+ </div>
                             <img
                               src={receiptPreview}
-                              alt="إيصال التحويل"
+                              alt="إيصال"
                               className="w-full max-h-64 object-contain bg-steel-light/20"
                             />
                             <button

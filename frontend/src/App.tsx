@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { Toaster } from 'sonner';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
@@ -10,11 +11,6 @@ import GuestRoute from '@/components/auth/GuestRoute';
 
 import { lazy, Suspense, type ComponentType } from 'react';
 
-/* ------------------------------------------------------------------ */
-/*  Lazy-loaded pages with safe wrappers                               */
-/* ------------------------------------------------------------------ */
-
-/** Wrap a lazy component so a failed import shows a graceful error instead of white-screen crash */
 function safeLazy<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
   return lazy(() =>
     factory().catch((err) => {
@@ -50,8 +46,8 @@ const SearchPage = safeLazy(() => import('@/pages/SearchPage'));
 const AboutPage = safeLazy(() => import('@/pages/AboutPage'));
 const ContactPage = safeLazy(() => import('@/pages/ContactPage'));
 const FAQPage = safeLazy(() => import('@/pages/FAQPage'));
-const PriceListPage = safeLazy(() => import('@/pages/PriceListPage'));
 const NotFoundPage = safeLazy(() => import('@/pages/NotFoundPage'));
+const PriceListPage = safeLazy(() => import('@/pages/PriceListPage'));
 
 // Auth pages
 const LoginPage = safeLazy(() => import('@/pages/LoginPage'));
@@ -62,19 +58,20 @@ const OrdersPage = safeLazy(() => import('@/pages/OrdersPage'));
 // Admin pages
 const AdminLoginPage = safeLazy(() => import('@/pages/admin/AdminLoginPage'));
 const AdminDashboardPage = safeLazy(() => import('@/pages/admin/AdminDashboardPage'));
-const OrdersManagementView = safeLazy(() => import('@/pages/admin/OrdersManagementView'));
+const OrdersManagement = safeLazy(() => import('@/pages/admin/OrdersManagement'));
 const AddProductView = safeLazy(() => import('@/pages/admin/AddProductView'));
 const InventoryView = safeLazy(() => import('@/pages/admin/InventoryView'));
 const AnalyticsDashboard = safeLazy(() => import('@/pages/admin/AnalyticsDashboard'));
 const DeliveryOptionsView = safeLazy(() => import('@/pages/admin/DeliveryOptionsView'));
-const PriceListManagement = safeLazy(() => import('@/pages/admin/PriceListManagement'));
-const SettingsView = safeLazy(() => import('@/pages/admin/SettingsView'));
+
+// Removed PriceListManagement and PriceListPage — price list feature removed entirely
 
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
         <CartProvider>
+          <Toaster position="bottom-left" />
           <Suspense
             fallback={
               <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -103,7 +100,7 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/faq" element={<FAQPage />} />
-                <Route path="/price-list" element={<PriceListPage />} />
+                <Route path="/pricelist" element={<PriceListPage />} />
 
                 {/* Guest-only routes (redirect to profile if logged in) */}
                 <Route
@@ -155,14 +152,13 @@ function App() {
                   </AdminProtectedRoute>
                 }
               >
-                <Route path="orders" element={<OrdersManagementView />} />
+                <Route path="orders" element={<OrdersManagement />} />
                 <Route path="add-product" element={<AddProductView />} />
                 <Route path="inventory" element={<InventoryView />} />
                 <Route path="analytics" element={<AnalyticsDashboard />} />
                 <Route path="delivery" element={<DeliveryOptionsView />} />
-                <Route path="price-list" element={<PriceListManagement />} />
-                <Route path="settings" element={<SettingsView />} />
-                <Route index element={<OrdersManagementView />} />
+                {/* Price-list removed */}
+                <Route index element={<OrdersManagement />} />
               </Route>
             </Routes>
           </Suspense>
