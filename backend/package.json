@@ -1,6 +1,7 @@
 {
   "name": "eltanany-server",
   "version": "1.0.0",
+  "type": "commonjs",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
