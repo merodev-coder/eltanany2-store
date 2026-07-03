@@ -69,12 +69,12 @@ export default function HeroCarousel() {
           alt={slides[currentSlide].title}
           className="w-full h-full object-cover transition-all duration-700 ease-in-out"
         />
-        <div className="absolute inset-0 bg-gradient-to-l from-zinc-950/90 via-zinc-950/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/60 to-transparent" />
       </div>
 
       {/* Content Container */}
       <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center">
-        <div className="w-full lg:w-1/2 text-right mr-auto">
+        <div className="w-full lg:w-1/2 text-right ml-auto">
           <div className="inline-block px-4 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-400 text-sm font-medium mb-4">
             {slides[currentSlide].tag}
           </div>
