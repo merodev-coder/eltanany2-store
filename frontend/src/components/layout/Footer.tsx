@@ -90,35 +90,13 @@ export default function Footer() {
                 <span className="text-white/60 font-body text-sm group-hover:text-white transition-colors duration-200">ahmedowen60@yahoo.com</span>
               </div>
             </div>
-
-            <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <p className="font-body text-sm text-white/80 mb-2">اشترك للحصول على العروض الحصرية</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="رقم الواتساب"
-                  className="flex-1 h-10 px-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/40 font-body text-sm outline-none focus:border-ignition-start focus:ring-2 focus:ring-ignition-start/20 transition-all duration-200"
-                />
-                <button className="h-10 px-4 rounded-lg gradient-brand text-white font-body text-sm font-medium hover:shadow-glow hover:scale-105 transition-all duration-200">
-                  اشترك
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/40 font-body text-sm">
+        <div className="mt-12 pt-8 border-t border-white/10">
+          <p className="text-white/40 font-body text-sm text-center">
             © 2026 ELTANANY 2. جميع الحقوق محفوظة.
           </p>
-          <div className="flex items-center gap-4">
-            <span className="text-white/40 font-body text-xs">الدفع عند الاستلام متاح</span>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-5 bg-gradient-to-br from-white/20 to-white/10 rounded flex items-center justify-center text-white/60 text-xs font-bold">VISA</div>
-              <div className="w-8 h-5 bg-gradient-to-br from-white/20 to-white/10 rounded flex items-center justify-center text-white/60 text-xs font-bold">MC</div>
-              <div className="w-8 h-5 bg-gradient-to-br from-white/20 to-white/10 rounded flex items-center justify-center text-white/60 text-xs font-bold">COD</div>
-            </div>
-          </div>
         </div>
       </div>
     </footer>

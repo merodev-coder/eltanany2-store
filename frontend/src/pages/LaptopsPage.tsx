@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import ProductCard from '@/components/ui-custom/ProductCard';
-import { getAllLaptops, filterLaptops } from '@/services/api';
+import { getAllLaptops } from '@/services/api';
 import type { Product, BrandType, CPUType, GPUType, RAMType, StorageType } from '@/types';
 import { BRANDS, CPUS, GPUS, RAMS, STORAGES } from '@/types';
 
 export default function LaptopsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -30,25 +31,52 @@ export default function LaptopsPage() {
   const [selectedStorage, setSelectedStorage] = useState<StorageType[]>([]);
   const [sortBy, setSortBy] = useState('default');
 
+  // Fetch all products once on mount
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const all = await getAllLaptops();
-      const filters: Record<string, unknown> = {};
-      if (selectedBrands.length) filters.brands = selectedBrands;
-      if (selectedCategory.length) filters.categories = selectedCategory;
-      if (priceRange[1] < 100000) filters.priceRange = priceRange;
-      if (selectedCpu.length) filters.cpu = selectedCpu;
-      if (selectedGpu.length) filters.gpu = selectedGpu;
-      if (selectedRam.length) filters.ram = selectedRam;
-      if (selectedStorage.length) filters.storage = selectedStorage;
-
-      const filtered = Object.keys(filters).length > 0 ? await filterLaptops(filters) : all;
-      setProducts(filtered);
+      setAllProducts(all);
       setLoading(false);
     };
     load();
-  }, [selectedBrands, selectedCategory, priceRange, selectedCpu, selectedGpu, selectedRam, selectedStorage]);
+  }, []);
+
+  // Apply client-side filtering
+  useEffect(() => {
+    const filtered = allProducts.filter(product => {
+      // Brand filter
+      if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand as BrandType)) {
+        return false;
+      }
+      // Category filter
+      if (selectedCategory.length > 0 && !selectedCategory.includes(product.category)) {
+        return false;
+      }
+      // Price filter
+      if (priceRange[1] < 100000 && product.price > priceRange[1]) {
+        return false;
+      }
+      // CPU filter
+      if (selectedCpu.length > 0 && !selectedCpu.includes(product.specs?.cpu as CPUType)) {
+        return false;
+      }
+      // GPU filter
+      if (selectedGpu.length > 0 && !selectedGpu.includes(product.specs?.gpu as GPUType)) {
+        return false;
+      }
+      // RAM filter
+      if (selectedRam.length > 0 && !selectedRam.includes(product.specs?.ram as RAMType)) {
+        return false;
+      }
+      // Storage filter
+      if (selectedStorage.length > 0 && !selectedStorage.includes(product.specs?.storage as StorageType)) {
+        return false;
+      }
+      return true;
+    });
+    setProducts(filtered);
+  }, [allProducts, selectedBrands, selectedCategory, priceRange, selectedCpu, selectedGpu, selectedRam, selectedStorage]);
 
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
