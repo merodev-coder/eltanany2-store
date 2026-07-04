@@ -16,7 +16,7 @@ const COOKIE_OPTIONS: {
 } = {
   httpOnly: true,
   secure: isProd,
-  sameSite: isProd ? 'strict' : 'lax',
+  sameSite: 'lax',
   path: '/',
 };
 

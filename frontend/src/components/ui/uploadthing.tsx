@@ -9,8 +9,8 @@ export type { UploadDropzoneProps };
 import "@uploadthing/react/styles.css";
 
 // ── Shared UploadThing API endpoint ────────────────────────────────────────
-// Use relative URL so requests are proxied through Vite as same-origin,
-// allowing cookies to be sent (required for admin auth middleware)
+// Use absolute URL to Render backend in production
+// (Vercel and Render are different origins, so relative "/api/uploadthing" hits Vercel not Render)
 const UPLOADTHING_URL = import.meta.env.VITE_UPLOADTHING_URL || "/api/uploadthing";
 
 // ── UploadButton (used in CheckoutPage) ─────────────────────────────────────
