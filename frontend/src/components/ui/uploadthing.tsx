@@ -1,45 +1,59 @@
-// frontend/src/components/ui/uploadthing.tsx
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
 import { generateUploadButton, generateUploadDropzone, type UploadDropzoneProps } from "@uploadthing/react";
+import type { UploadFile } from "@uploadthing/react";
 export type { UploadDropzoneProps };
+
+// Import UploadThing CSS globally so styles always load
+import "@uploadthing/react/styles.css";
 
 // ── Shared UploadThing API endpoint ────────────────────────────────────────
 // Use relative URL so requests are proxied through Vite as same-origin,
 // allowing cookies to be sent (required for admin auth middleware)
 const UPLOADTHING_URL = import.meta.env.VITE_UPLOADTHING_URL || "/api/uploadthing";
 
-// ── UploadButton (used in CheckoutPage for small inline triggers) ──────────
+// ── UploadButton (used in CheckoutPage) ─────────────────────────────────────
 export const UploadButton = generateUploadButton({
   url: UPLOADTHING_URL,
 });
 
-// ── UploadDropzone (large click/drag-drop zone — full surface area) ─────────
-// `generateUploadDropzone` returns a full-component, not a button element.
-// The `config.content` function receives full UploadThing state:
-//   - `isUploading`, `isReady`, `isDragOver`, `progress`
-// so we can wire every visual state (idle / uploading / dragging / error).
-export const UploadDropzone = generateUploadDropzone({
+// ── SafeUploadDropzone: SSR hydration guard ─────────────────────────────────
+// Wraps UploadDropzone to only render AFTER client mount, bypassing
+// SSR hydration deadlocks that cause the infinite "Loading..." hang.
+function SafeUploadDropzone(props: UploadDropzoneProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center py-10 text-slate text-sm">
+        جاري التحميل…
+      </div>
+    );
+  }
+
+  return <UploadDropzoneComponent {...props} />;
+}
+
+// ── UploadDropzone (large click/drag-drop zone) ─────────────────────────────
+// `generateUploadDropzone` returns a full component, not a button element.
+const UploadDropzoneComponent = generateUploadDropzone({
   url: UPLOADTHING_URL,
   config: {
-    // Image MIME type for product image uploads (server-side validation
-    // in uploadthing.ts enforces endpoint constraints; this is a client-side hint)
     image: {
       maxFileSize: "4MB",
       maxFileCount: 6,
     },
-    // The .docx MIME type for price list uploads
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
       maxFileSize: "16MB",
       maxFileCount: 1,
     },
   },
-  // Render the full dropzone surface — every visual state in one function.
-  content: ({
-    isUploading,
-    isReady,
-    isDragOver,
-    progress,
-    uploadProgress,
-  }) => {
+  content: ({ isUploading, isReady, isDragOver, progress, uploadProgress }) => {
     // Dropping / empty state
     if (isDragOver && isReady) {
       return (
@@ -49,7 +63,7 @@ export const UploadDropzone = generateUploadDropzone({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth={1.5}
+            strokeWidth={1}
           >
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
@@ -81,7 +95,7 @@ export const UploadDropzone = generateUploadDropzone({
       );
     }
 
-    // Idle / ready state — the "click me" prompt
+    // Idle / ready state — click me
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-10">
         <svg
@@ -89,7 +103,7 @@ export const UploadDropzone = generateUploadDropzone({
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.5}
+          strokeWidth={1}
         >
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
           <polyline points="17 8 12 3 7 8" />
@@ -106,7 +120,10 @@ export const UploadDropzone = generateUploadDropzone({
   },
 });
 
-// ── Tiny inline spinner icon (no lucide export needed) ─────────────────────
+// Export the safe wrapper (with SSR guard) as the public component
+export { SafeUploadDropzone as UploadDropzone };
+
+// ── Inline Spinner Icon ──────────────────────────────────────────────────────
 function SpinnerIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>

@@ -1,17 +1,9 @@
-// frontend/src/pages/admin/AddProductView.tsx
 import { useState, useCallback } from "react";
 import { Plus, Loader2, ToggleLeft, ToggleRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { addProduct } from "@/services/api";
 import { UploadDropzone } from "@/components/ui/uploadthing";
-import type {
-  UTUploadResult,
-  BrandType,
-  CPUType,
-  GPUType,
-  RAMType,
-  StorageType,
-} from "@/types";
+import type { UTUploadResult, BrandType, CPUType, GPUType, RAMType, StorageType } from "@/types";
 import { BRANDS, CPUS, GPUS, RAMS, STORAGES } from "@/types";
 
 export default function AddProductView() {
@@ -34,19 +26,14 @@ export default function AddProductView() {
   const [message, setMessage] = useState("");
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const removeImage = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
+    setForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
   const onUploadComplete = useCallback((res: UTUploadResult[]) => {
@@ -111,9 +98,7 @@ export default function AddProductView() {
       </h2>
 
       {message && (
-        <div
-          className={`mb-4 p-3 rounded-lg text-sm font-body ${message.startsWith("✅") ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}
-        >
+        <div className={`mb-4 p-3 rounded-lg text-sm font-body ${message.startsWith("✅") ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}>
           {message}
         </div>
       )}
@@ -121,9 +106,7 @@ export default function AddProductView() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Name */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            الاسم <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الاسم <span className="text-error">*</span></label>
           <input
             name="name"
             value={form.name}
@@ -136,9 +119,7 @@ export default function AddProductView() {
 
         {/* Category */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            الفئة <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الفئة <span className="text-error">*</span></label>
           <select
             name="category"
             value={form.category}
@@ -152,9 +133,7 @@ export default function AddProductView() {
 
         {/* Brand */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            الماركة <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الماركة <span className="text-error">*</span></label>
           <select
             name="brand"
             value={form.brand}
@@ -164,18 +143,14 @@ export default function AddProductView() {
           >
             <option value="">اختر الماركة</option>
             {BRANDS.map((brand) => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
+              <option key={brand} value={brand}>{brand}</option>
             ))}
           </select>
         </div>
 
         {/* CPU */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            المعالج <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">المعالج <span className="text-error">*</span></label>
           <select
             name="cpu"
             value={form.cpu}
@@ -185,18 +160,14 @@ export default function AddProductView() {
           >
             <option value="">اختر المعالج</option>
             {CPUS.map((cpu) => (
-              <option key={cpu} value={cpu}>
-                {cpu}
-              </option>
+              <option key={cpu} value={cpu}>{cpu}</option>
             ))}
           </select>
         </div>
 
         {/* GPU */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            كرت الشاشة <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">كرت الشاشة <span className="text-error">*</span></label>
           <select
             name="gpu"
             value={form.gpu}
@@ -206,18 +177,14 @@ export default function AddProductView() {
           >
             <option value="">اختر كرت الشاشة</option>
             {GPUS.map((gpu) => (
-              <option key={gpu} value={gpu}>
-                {gpu}
-              </option>
+              <option key={gpu} value={gpu}>{gpu}</option>
             ))}
           </select>
         </div>
 
         {/* RAM */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            الرام <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الرام <span className="text-error">*</span></label>
           <select
             name="ram"
             value={form.ram}
@@ -227,18 +194,14 @@ export default function AddProductView() {
           >
             <option value="">اختر الرام</option>
             {RAMS.map((ram) => (
-              <option key={ram} value={ram}>
-                {ram} GB
-              </option>
+              <option key={ram} value={String(ram)}>{ram} GB</option>
             ))}
           </select>
         </div>
 
         {/* Storage */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            التخزين <span className="text-error">*</span>
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">التخزين <span className="text-error">*</span></label>
           <select
             name="storage"
             value={form.storage}
@@ -248,9 +211,7 @@ export default function AddProductView() {
           >
             <option value="">اختر التخزين</option>
             {STORAGES.map((storage) => (
-              <option key={storage} value={storage}>
-                {storage} GB
-              </option>
+              <option key={storage} value={String(storage)}>{storage} GB</option>
             ))}
           </select>
         </div>
@@ -258,9 +219,7 @@ export default function AddProductView() {
         {/* Prices */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-body text-gray-600 mb-1">
-              السعر الأصلي (سعر الشراء) <span className="text-error">*</span>
-            </label>
+            <label className="block text-sm font-body text-gray-600 mb-1">السعر الأصلي (سعر الشراء) <span className="text-error">*</span></label>
             <input
               name="price"
               type="number"
@@ -271,14 +230,10 @@ export default function AddProductView() {
               placeholder="0"
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
             />
-            <p className="text-xs text-slate mt-1 font-body">
-              هذا السعر لا يظهر للعملاء — يُستخدم لحساب الأرباح
-            </p>
+            <p className="text-xs text-slate mt-1 font-body">هذا السعر لا يظهر للعملاء — يُستخدم لحساب الأرباح</p>
           </div>
           <div>
-            <label className="block text-sm font-body text-gray-600 mb-1">
-              سعر البيع <span className="text-error">*</span>
-            </label>
+            <label className="block text-sm font-body text-gray-600 mb-1">سعر البيع <span className="text-error">*</span></label>
             <input
               name="sellingPrice"
               type="number"
@@ -289,17 +244,13 @@ export default function AddProductView() {
               placeholder="0"
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
             />
-            <p className="text-xs text-slate mt-1 font-body">
-              السعر المعروض للعملاء في المتجر
-            </p>
+            <p className="text-xs text-slate mt-1 font-body">السعر المعروض للعملاء في المتجر</p>
           </div>
         </div>
 
         {/* Stock */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            المخزون
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">المخزون</label>
           <input
             name="stock"
             type="number"
@@ -312,9 +263,7 @@ export default function AddProductView() {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-1">
-            الوصف
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-1">الوصف</label>
           <textarea
             name="description"
             value={form.description}
@@ -329,9 +278,7 @@ export default function AddProductView() {
         <div className="flex items-center gap-3 p-3 bg-steel-light/30 rounded-lg">
           <button
             type="button"
-            onClick={() =>
-              setForm((prev) => ({ ...prev, isFeatured: !prev.isFeatured }))
-            }
+            onClick={() => setForm((prev) => ({ ...prev, isFeatured: !prev.isFeatured }))}
             className="flex items-center gap-2"
           >
             {form.isFeatured ? (
@@ -339,17 +286,13 @@ export default function AddProductView() {
             ) : (
               <ToggleLeft className="w-8 h-8 text-slate" />
             )}
-            <span className="font-body text-sm text-[#18181B]">
-              الظهور في الصفحة الرئيسية
-            </span>
+            <span className="font-body text-sm text-[#18181B]">الظهور في الصفحة الرئيسية</span>
           </button>
         </div>
 
         {/* Photos */}
         <div>
-          <label className="block text-sm font-body text-gray-600 mb-2">
-            الصور
-          </label>
+          <label className="block text-sm font-body text-gray-600 mb-2">الصور</label>
           <UploadDropzone
             endpoint="productImageUploader"
             onClientUploadComplete={onUploadComplete}
@@ -362,11 +305,7 @@ export default function AddProductView() {
             <div className="flex gap-3 mt-4 flex-wrap">
               {form.images.map((img, i) => (
                 <div key={i} className="relative group">
-                  <img
-                    src={img}
-                    alt=""
-                    className="w-20 h-20 object-cover rounded-lg border border-steel-light"
-                  />
+                  <img src={img} alt="" className="w-20 h-20 object-cover rounded-lg border border-steel-light" />
                   <button
                     type="button"
                     onClick={() => removeImage(i)}
@@ -386,11 +325,7 @@ export default function AddProductView() {
           disabled={loading}
           className="w-full md:w-auto px-8 py-3 bg-primary text-white rounded-lg font-body font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Plus className="w-4 h-4" />
-          )}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           إضافة المنتج
         </button>
       </form>

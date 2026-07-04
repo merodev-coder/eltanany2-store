@@ -61,7 +61,9 @@
       "Bash(git checkout *)",
       "Bash(npx prettier *)",
       "Bash(sed -i 's/ram: undefined as RAMType | undefined,/ram: \"\",/' src/pages/admin/AddProductView.tsx)",
-      "Bash(sed -i 's/storage: undefined as StorageType | undefined,/storage: \"\",/' src/pages/admin/AddProductView.tsx)"
+      "Bash(sed -i 's/storage: undefined as StorageType | undefined,/storage: \"\",/' src/pages/admin/AddProductView.tsx)",
+      "Bash(cat)",
+      "Bash(cp /tmp/main_fix.tsx \"C:/Users/ELTANANY 01062856027/Desktop/eltanany/frontend/src/main.tsx\")"
     ]
   }
 }
