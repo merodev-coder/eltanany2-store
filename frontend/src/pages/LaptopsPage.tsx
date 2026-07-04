@@ -13,16 +13,12 @@ export default function LaptopsPage() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    brand: true, price: true, category: true, cpu: false, gpu: false, ram: false, storage: false,
+    brand: true, price: true, cpu: false, gpu: false, ram: false, storage: false,
   });
 
   const [selectedBrands, setSelectedBrands] = useState<BrandType[]>(() => {
     const b = searchParams.get('brand');
     return b ? b.split(',') as BrandType[] : [];
-  });
-  const [selectedCategory, setSelectedCategory] = useState<string[]>(() => {
-    const c = searchParams.get('category');
-    return c ? c.split(',') : [];
   });
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [selectedCpu, setSelectedCpu] = useState<CPUType[]>([]);
@@ -49,10 +45,6 @@ export default function LaptopsPage() {
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand as BrandType)) {
         return false;
       }
-      // Category filter
-      if (selectedCategory.length > 0 && !selectedCategory.includes(product.category)) {
-        return false;
-      }
       // Price filter
       if (priceRange[1] < 100000 && product.price > priceRange[1]) {
         return false;
@@ -76,7 +68,7 @@ export default function LaptopsPage() {
       return true;
     });
     setProducts(filtered);
-  }, [allProducts, selectedBrands, selectedCategory, priceRange, selectedCpu, selectedGpu, selectedRam, selectedStorage]);
+  }, [allProducts, selectedBrands, priceRange, selectedCpu, selectedGpu, selectedRam, selectedStorage]);
 
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -89,7 +81,6 @@ export default function LaptopsPage() {
 
   const clearFilters = () => {
     setSelectedBrands([]);
-    setSelectedCategory([]);
     setPriceRange([0, 100000]);
     setSelectedCpu([]);
     setSelectedGpu([]);
@@ -98,7 +89,7 @@ export default function LaptopsPage() {
     setSearchParams({});
   };
 
-  const activeFiltersCount = selectedBrands.length + selectedCategory.length + (priceRange[1] < 100000 ? 1 : 0) +
+  const activeFiltersCount = selectedBrands.length + (priceRange[1] < 100000 ? 1 : 0) +
     selectedCpu.length + selectedGpu.length + selectedRam.length + selectedStorage.length;
 
   const sortedProducts = useMemo(() => {
@@ -180,12 +171,6 @@ export default function LaptopsPage() {
                 <button onClick={() => setSelectedBrands(prev => prev.filter(v => v !== b))}><X className="w-3 h-3" /></button>
               </span>
             ))}
-            {selectedCategory.map(c => (
-              <span key={c} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-ignition-start/10 text-ignition-start text-xs font-body">
-                {c === 'gaming' ? 'ألعاب' : 'أعمال'}
-                <button onClick={() => setSelectedCategory(prev => prev.filter(v => v !== c))}><X className="w-3 h-3" /></button>
-              </span>
-            ))}
             <button onClick={clearFilters} className="text-xs font-body text-slate hover:text-error underline">
               مسح الكل
             </button>
@@ -208,17 +193,6 @@ export default function LaptopsPage() {
               {filterSection('الماركة', 'brand',
                 <div className="max-h-48 overflow-y-auto space-y-0.5">
                   {BRANDS.map(b => checkbox(b, selectedBrands.includes(b), () => toggleArrayFilter(b, selectedBrands, setSelectedBrands), `brand-${b}`))}
-                </div>
-              )}
-
-              {filterSection('الفئة', 'category',
-                <div className="space-y-0.5">
-                  {['gaming', 'business'].map(c => checkbox(
-                    c === 'gaming' ? 'ألعاب' : 'أعمال',
-                    selectedCategory.includes(c),
-                    () => toggleArrayFilter(c, selectedCategory, setSelectedCategory),
-                    `cat-${c}`
-                  ))}
                 </div>
               )}
 
