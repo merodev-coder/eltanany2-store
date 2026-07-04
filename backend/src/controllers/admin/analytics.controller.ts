@@ -71,7 +71,7 @@ export async function getMonthlyAnalytics(req: Request, res: Response): Promise<
       {
         $group: {
           _id: null,
-          totalInventoryValue: { $sum: { $multiply: ['$buyingPrice', '$stock'] } },
+          totalInventoryValue: { $sum: { $multiply: ['$sellingPrice', '$stock'] } },
           totalProducts: { $sum: 1 },
           lowStockCount: {
             $sum: { $cond: [{ $lte: ['$stock', 5] }, 1, 0] },

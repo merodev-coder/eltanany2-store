@@ -63,7 +63,19 @@
       "Bash(sed -i 's/ram: undefined as RAMType | undefined,/ram: \"\",/' src/pages/admin/AddProductView.tsx)",
       "Bash(sed -i 's/storage: undefined as StorageType | undefined,/storage: \"\",/' src/pages/admin/AddProductView.tsx)",
       "Bash(cat)",
-      "Bash(cp /tmp/main_fix.tsx \"C:/Users/ELTANANY 01062856027/Desktop/eltanany/frontend/src/main.tsx\")"
+      "Bash(cp /tmp/main_fix.tsx \"C:/Users/ELTANANY 01062856027/Desktop/eltanany/frontend/src/main.tsx\")",
+      "Bash(xargs grep -l \"findById.*select.*buyingPrice\\\\|\\\\.select.*buyingPrice\")",
+      "Bash(sudo sed -i \"s/\\\\.select\\('buyingPrice sellingPrice price name'\\)/.select\\('sellingPrice price name'\\)/g\" backend/src/controllers/user/order.controller.ts)",
+      "Bash(sed -i \"s|brand\\\\?: BrandType; // الماركة|brand: BrandType; // الماركة|g\" index.ts)",
+      "Bash(sed -i \"s|'8 GB'|8|g; s|'16 GB'|16|g; s|'32 GB'|32|g; s|'64 GB'|64|g; s|'128 GB'|128|g; s|'256 GB'|256|g; s|'512 GB'|512|g\" index.ts)",
+      "Bash(cat src/types/)",
+      "Bash(cat frontend/src/types/index.ts)",
+      "Bash(cat src/types/index.ts)",
+      "Bash(sed -i \"s/const costPrice = Number\\(product.buyingPrice ?? 0\\);/const costPrice = 0; \\\\/\\\\/ buyingPrice removed/\" src/controllers/user/order.controller.ts)",
+      "Bash(sed -i \"s/totalCost += costPrice \\\\* qty;/totalCost += costPrice * qty; \\\\/\\\\/ 0 because buyingPrice removed/\" src/controllers/user/order.controller.ts)",
+      "Bash(grep -v \"//\\\\|Removed\\\\|removed\")",
+      "Bash(grep -l \"buyingPrice\" src/**/*.ts src/**/*.js src/**/*.tsx)",
+      "Bash(grep -rl \"buyingPrice\" src/ --include=\"*.ts\" --include=\"*.js\")"
     ]
   }
 }

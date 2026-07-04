@@ -55,7 +55,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response, next: 
   const orderItems = [];
 
   for (const item of items) {
-    const product = await Product.findById(item.productId).select('buyingPrice sellingPrice price name');
+    const product = await Product.findById(item.productId).select('sellingPrice price name');
     if (!product) {
       throw new AppError(`المنتج ${item.name} غير موجود`, 400);
     }
@@ -66,8 +66,8 @@ export const createOrder = catchAsync(async (req: Request, res: Response, next: 
     calculatedSubtotal += itemTotal;
 
     // Calculate cost for profit tracking
-    const costPrice = Number(product.buyingPrice ?? 0);
-    totalCost += costPrice * qty;
+    const costPrice = 0; // buyingPrice removed
+    totalCost += costPrice * qty; // 0 because buyingPrice removed
 
     orderItems.push({
       product: new userMongoose.Types.ObjectId(item.productId),

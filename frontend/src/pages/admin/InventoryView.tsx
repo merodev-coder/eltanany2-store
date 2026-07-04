@@ -266,7 +266,7 @@ export default function InventoryView() {
               <tr className="border-b border-steel-light">
                 <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">معلومات المنتج</th>
                 <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">الماركة</th>
-                <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">سعر الشراء</th>
+                
                 <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">سعر البيع</th>
                 <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">المخزون</th>
                 <th className="text-right py-3 px-4 font-body text-sm text-slate font-medium">حالة التوفر</th>
@@ -276,7 +276,7 @@ export default function InventoryView() {
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 font-body text-slate">
+                  <td colSpan={6} className="text-center py-12 font-body text-slate">
                     لا توجد منتجات مطابقة
                   </td>
                 </tr>
@@ -300,9 +300,6 @@ export default function InventoryView() {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-body text-sm text-slate">{item.brand}</td>
-                    <td className="py-3 px-4 font-body text-sm text-[#18181B]">
-                      {(item.buyingPrice || 0).toLocaleString()} ج.م
-                    </td>
                     <td className="py-3 px-4 font-body text-sm text-[#18181B] font-medium">
                       {(item.sellingPrice || 0).toLocaleString()} ج.م
                     </td>

@@ -1,7 +1,21 @@
-// backend/src/validators/product.validator.ts
 import { z } from 'zod';
 
-// ── Create Product ─────────────────────────────────────
+// ── Enum helpers (must match Product.model.ts enums) ─────
+const BrandEnum = z.enum(['HP', 'Dell', 'Lenovo']);
+const CPUEnum  = z.enum(['Intel Core i3', 'Intel Core i5', 'Intel Core i7', 'Intel Core i9', 'AMD Ryzen']);
+const GPUEnum  = z.enum(['Intel', 'NVIDIA', 'AMD']);
+const RAMEnum  = z.enum(['8 GB', '16 GB', '32 GB', '64 GB']);
+const StorEnum = z.enum(['128 GB', '256 GB', '512 GB']);
+
+// ── Specs sub-schema ──────────────────────────────────────
+const SpecsSchema = z.object({
+  cpu:    CPUEnum.optional(),
+  gpu:    GPUEnum.optional(),
+  ram:    RAMEnum.optional(),
+  storage: StorEnum.optional(),
+});
+
+// ── Create Product ────────────────────────────────────────
 export const createProductSchema = z.object({
   body: z.object({
     name: z
@@ -13,11 +27,11 @@ export const createProductSchema = z.object({
       .string({ required_error: 'وصف المنتج مطلوب' })
       .trim()
       .max(2000, 'الوصف يجب أن لا يتجاوز 2000 حرف'),
-    price: z
+    // sellingPrice = price shown to customers (required)
+    sellingPrice: z
       .number({ required_error: 'السعر مطلوب', invalid_type_error: 'السعر يجب أن يكون رقماً' })
       .min(0, 'السعر يجب أن يكون أكبر من أو يساوي 0'),
-    buyingPrice: z.number().min(0).optional(),
-    sellingPrice: z.number().min(0).optional(),
+    price: z.number().min(0).optional(), // alias/legacy — sync with sellingPrice in controller
     stock: z
       .number({ required_error: 'المخزون مطلوب', invalid_type_error: 'المخزون يجب أن يكون رقماً' })
       .int('المخزون يجب أن يكون عدداً صحيحاً')
@@ -27,7 +41,8 @@ export const createProductSchema = z.object({
       .trim()
       .min(1, 'التصنيف مطلوب'),
     subcategory: z.string().trim().optional(),
-    brand: z.string().trim().optional(),
+    brand: BrandEnum,
+    specs: SpecsSchema.optional(),
     imageUrl: z.string().url('يجب أن تكون الصورة URL صالح').optional().or(z.literal('')),
     images: z
       .array(z.string().url('يجب أن تكون الصورة URL صالح'))
@@ -44,7 +59,7 @@ export const createProductSchema = z.object({
   }),
 });
 
-// ── Update Product ─────────────────────────────────────
+// ── Update Product ────────────────────────────────────────
 export const updateProductSchema = z.object({
   body: z.object({
     name: z
@@ -58,12 +73,8 @@ export const updateProductSchema = z.object({
       .trim()
       .max(2000, 'الوصف يجب أن لا يتجاوز 2000 حرف')
       .optional(),
-    price: z
-      .number()
-      .min(0, 'السعر يجب أن يكون أكبر من أو يساوي 0')
-      .optional(),
-    buyingPrice: z.number().min(0).optional(),
     sellingPrice: z.number().min(0).optional(),
+    price: z.number().min(0).optional(),
     stock: z
       .number()
       .int('المخزون يجب أن يكون عدداً صحيحاً')
@@ -71,7 +82,8 @@ export const updateProductSchema = z.object({
       .optional(),
     category: z.string().trim().optional(),
     subcategory: z.string().trim().optional(),
-    brand: z.string().trim().optional(),
+    brand: BrandEnum.optional(),
+    specs: SpecsSchema.optional(),
     imageUrl: z.string().url('يجب أن تكون الصورة URL صالح').optional().or(z.literal('')),
     images: z
       .array(z.string().url('يجب أن تكون الصورة URL صالح'))

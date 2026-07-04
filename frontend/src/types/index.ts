@@ -8,9 +8,9 @@
 // ────────────────────────────────────────────────────────────
 /** Result object returned by UploadThing's onClientUploadComplete callback. */
 export interface UTUploadResult {
-url: string;
-name: string;
-size?: number;
+  url: string;
+  name: string;
+  size?: number;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -19,30 +19,29 @@ size?: number;
 export type BrandType = 'HP' | 'Dell' | 'Lenovo';
 export type CPUType = 'Intel Core i3' | 'Intel Core i5' | 'Intel Core i7' | 'Intel Core i9' | 'AMD Ryzen';
 export type GPUType = 'Intel' | 'NVIDIA' | 'AMD';
-export type RAMType = 8 | 16 | 32 | 64;
-export type StorageType = 128 | 256 | 512;
+export type RAMType = "8 GB" | "16 GB" | "32 GB" | "64 GB";
+export type StorageType = "128 GB" | "256 GB" | "512 GB";
 
 export const BRANDS: BrandType[] = ['HP', 'Dell', 'Lenovo'];
 export const CPUS: CPUType[] = ['Intel Core i3', 'Intel Core i5', 'Intel Core i7', 'Intel Core i9', 'AMD Ryzen'];
 export const GPUS: GPUType[] = ['Intel', 'NVIDIA', 'AMD'];
-export const RAMS: RAMType[] = [8, 16, 32, 64];
-export const STORAGES: StorageType[] = [128, 256, 512];
+export const RAMS: RAMType[] = ["8 GB", "16 GB", "32 GB", "64 GB"];
+export const STORAGES: StorageType[] = ["128 GB", "256 GB", "512 GB"];
 
 // ────────────────────────────────────────────────────────────
 // Product
 // ────────────────────────────────────────────────────────────
 export interface Product {
   _id: string;
-  name: string;           // اسم المنتج
+  name: string; // اسم المنتج
   category: 'laptop' | 'accessory';
   subcategory?: string;
-  brand?: BrandType;      // الماركة
-  buyingPrice?: number;    // سعر الشراء
-  price: number;           // سعر البيع (alias for sellingPrice)
-  sellingPrice?: number;   // سعر البيع (legacy)
-  stock: number;          // المخزون
+  brand?: BrandType; // الماركة
+  // Note: buyingPrice / originalPrice removed — admin only sees selling price
+  price: number; // سعر البيع (displayed price, backend-aliased to sellingPrice)
+  stock: number; // المخزون
   imageUrl?: string;
-  images?: string[];      // for backward compat
+  images?: string[]; // for backward compat
   description?: string;
   specs?: {
     cpu?: CPUType;
@@ -55,10 +54,10 @@ export interface Product {
   isBrandNew?: boolean;
   isFeatured?: boolean;
   badge?: string;
-  isPublished?: boolean;  // for soft-delete
+  isPublished?: boolean; // for soft-delete
   createdAt: string;
   updatedAt?: string;
-  oldPrice?: number;       // for discounts
+  oldPrice?: number; // for discounts
 }
 
 // ────────────────────────────────────────────────────────────
@@ -88,20 +87,20 @@ export interface OrderItem {
 
 export interface Order {
   _id: string;
-  orderNumber: string;      // رقم الطلب
+  orderNumber: string; // رقم الطلب
   user?: string | { _id: string; name: string; email: string; phone?: string };
-  customerName: string;     // اسم العميل (alias for customerInfo.name)
+  customerName: string; // اسم العميل (alias for customerInfo.name)
   customerPhone?: string;
   customerAddress?: string;
   notes?: string;
-  createdAt: string;        // تاريخ الطلب
-  totalValue: number;       // القيمة الإجمالية (alias for totalAmount)
-  subtotal?: number;        // المجموع الفرعي
-  shippingCost?: number;    // رسوم الشحن
+  createdAt: string; // تاريخ الطلب
+  totalValue: number; // القيمة الإجمالية (alias for totalAmount)
+  subtotal?: number; // المجموع الفرعي
+  shippingCost?: number; // رسوم الشحن
   status: OrderStatus;
   deliveryType?: DeliveryType;
   paymentMethod?: PaymentMethod;
-  receiptUrl?: string;      // UploadThing URL for عربون photo
+  receiptUrl?: string; // UploadThing URL for عربون photo
   receiptVerified?: boolean;
   items: OrderItem[];
   depositAmount?: number;
@@ -134,7 +133,6 @@ export interface InventoryLedgerItem {
   brand: string;
   image: string;
   category: 'laptop' | 'accessory';
-  costPrice: number;
   sellingPrice: number;
   stock: number;
   unitsSold: number;

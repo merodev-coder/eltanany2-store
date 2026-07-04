@@ -13,10 +13,9 @@ export default function AddProductView() {
     brand: "" as BrandType | "",
     cpu: "" as CPUType | "",
     gpu: "" as GPUType | "",
-    ram: "" as string,
-    storage: "" as string,
+    ram: "" as RAMType | "",
+    storage: "" as StorageType | "",
     price: "",
-    sellingPrice: "",
     stock: "0",
     description: "",
     images: [] as string[],
@@ -53,11 +52,10 @@ export default function AddProductView() {
         specs: {
           cpu: form.cpu,
           gpu: form.gpu,
-          ram: form.ram ? Number(form.ram) : undefined,
-          storage: form.storage ? Number(form.storage) : undefined,
+          ram: form.ram || undefined,
+          storage: form.storage || undefined,
         },
         price: Number(form.price),
-        sellingPrice: Number(form.sellingPrice),
         stock: Number(form.stock),
         description: form.description,
         images: form.images,
@@ -70,10 +68,9 @@ export default function AddProductView() {
         brand: "" as BrandType | "",
         cpu: "" as CPUType | "",
         gpu: "" as GPUType | "",
-        ram: "",
-        storage: "",
+        ram: "" as RAMType | "",
+        storage: "" as StorageType | "",
         price: "",
-        sellingPrice: "",
         stock: "0",
         description: "",
         images: [],
@@ -194,7 +191,7 @@ export default function AddProductView() {
           >
             <option value="">اختر الرام</option>
             {RAMS.map((ram) => (
-              <option key={ram} value={String(ram)}>{ram} GB</option>
+              <option key={ram} value={ram}>{ram} GB</option>
             ))}
           </select>
         </div>
@@ -211,41 +208,25 @@ export default function AddProductView() {
           >
             <option value="">اختر التخزين</option>
             {STORAGES.map((storage) => (
-              <option key={storage} value={String(storage)}>{storage} GB</option>
+              <option key={storage} value={storage}>{storage} GB</option>
             ))}
           </select>
         </div>
 
-        {/* Prices */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-body text-gray-600 mb-1">السعر الأصلي (سعر الشراء) <span className="text-error">*</span></label>
-            <input
-              name="price"
-              type="number"
-              value={form.price}
-              onChange={handleChange}
-              required
-              min={0}
-              placeholder="0"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
-            />
-            <p className="text-xs text-slate mt-1 font-body">هذا السعر لا يظهر للعملاء — يُستخدم لحساب الأرباح</p>
-          </div>
-          <div>
-            <label className="block text-sm font-body text-gray-600 mb-1">سعر البيع <span className="text-error">*</span></label>
-            <input
-              name="sellingPrice"
-              type="number"
-              value={form.sellingPrice}
-              onChange={handleChange}
-              required
-              min={0}
-              placeholder="0"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
-            />
-            <p className="text-xs text-slate mt-1 font-body">السعر المعروض للعملاء في المتجر</p>
-          </div>
+        {/* Price (selling price only — displayed to customers) */}
+        <div>
+          <label className="block text-sm font-body text-gray-600 mb-1">سعر البيع <span className="text-error">*</span></label>
+          <input
+            name="price"
+            type="number"
+            value={form.price}
+            onChange={handleChange}
+            required
+            min={0}
+            placeholder="0"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
+          />
+          <p className="text-xs text-slate mt-1 font-body">السعر المعروض للعملاء في المتجر</p>
         </div>
 
         {/* Stock */}
