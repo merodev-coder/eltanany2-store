@@ -53,8 +53,22 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── CORS ───────────────────────────────────────────────────
-// Allow all origins for development (localhost:5173 frontend)
-app.use(cors({ origin: true, credentials: true }));
+// Allow specific origins with credentials for cross-origin cookies
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://eltanany2-store-y8bf-seven.vercel.app',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
 // ── Body parsing ────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
