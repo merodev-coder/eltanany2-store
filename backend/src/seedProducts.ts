@@ -12,7 +12,7 @@ console.log('   ADMIN_DB_URI:', process.env.ADMIN_DB_URI ? '✅ Set' : '❌ Not 
 console.log('   USER_DB_URI:', process.env.USER_DB_URI ? '✅ Set' : '❌ Not set');
 
 // Create direct mongoose connection for seeding
-const MONGO_URI = process.env.ADMIN_DB_URI;
+const MONGO_URI = process.env.ADMIN_DB_URI as string;
 if (!MONGO_URI) {
   console.error('❌ ADMIN_DB_URI is not set in environment');
   process.exit(1);
